@@ -14,7 +14,10 @@ wasm-pack = "0.13"
 lc3b = { version = "0", path = "../lc3b" }
 
 [dependencies]
-axum = "0.7"
-askama = "0.12.1"
-askama_axum = "0.4.0"
-tokio = { version = "1", features = ["full"] }
+axum = { version = "0.7", default-features = false, features = [
+    "tokio",
+    "http1",
+] }
+tokio = { version = "1", default-features = false, features = [
+    "rt-multi-thread",
+] }

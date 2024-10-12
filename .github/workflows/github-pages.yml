@@ -1,0 +1,40 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - gha
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: lc3b-rs
+
+      - uses: actions/checkout@v4
+        with:
+          repository: lc3b/lc3b.github.io.git
+          path: lc3b.github.io
+          ref: main
+          token: ${{ secrets.GH_IO_PAGES_PAT }}
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - run: cd lc3b-rs/lc3b-web; cargo build
+      - run: ls lc3b-rs/target/debug/build/lc3b-web-*/out/pkg/lc3b_bg.wasm
+      - run: |
+          cp lc3b-rs/target/debug/build/lc3b-web-*/out/pkg/lc3b_bg.wasm lc3b.github.io/
+          cp lc3b-rs/target/debug/build/lc3b-web-*/out/pkg/lc3b.js lc3b.github.io/
+          cp lc3b-rs/lc3b-web/templates/index.html lc3b.github.io/
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Automated Commit"
+          repository: lc3b.github.io
+          tagging_message: ${{  steps.ref_name.outputs.result }}

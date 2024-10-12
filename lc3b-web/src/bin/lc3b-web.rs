@@ -1,5 +1,3 @@
-use askama::Template;
-use askama_axum::IntoResponse as AskamaIntoResponse;
 use axum::{http::StatusCode, response::IntoResponse, routing::get, Router};
 
 #[tokio::main]
@@ -15,9 +13,10 @@ async fn main() {
 }
 
 async fn get_root() -> impl IntoResponse {
-    IndexTemplate {}.into_response()
+    LC3B_INDEX_BYTES
 }
 
+const LC3B_INDEX_BYTES: &[u8] = include_bytes!("../../templates/index.html");
 const LC3B_WASM_BYTES: &[u8] = include_bytes!(env!("LC3B_PKG_WASM_PATH"));
 
 async fn get_lc3b_wasm() -> impl IntoResponse {
@@ -37,7 +36,3 @@ async fn get_lc3b_js() -> impl IntoResponse {
         LC3B_JS_BYTES,
     )
 }
-
-#[derive(Template)]
-#[template(path = "index.html")]
-struct IndexTemplate {}
