@@ -13,7 +13,11 @@ async fn main() {
 }
 
 async fn get_root() -> impl IntoResponse {
-    LC3B_INDEX_BYTES
+    (
+        StatusCode::OK,
+        [("content-type", "text/html")],
+        LC3B_INDEX_BYTES,
+    )
 }
 
 const LC3B_INDEX_BYTES: &[u8] = include_bytes!("../../templates/index.html");
