@@ -22,6 +22,7 @@ import RegisterSet from "./RegisterSet";
 import MemoryViewer from "./MemoryViewer";
 import StatusSection from "./StatusSection";
 import DebugLog from "./DebugLog";
+import About from "./About";
 
 const DEFAULT_ASSEMBLY = `; LC-3b Assembly Program
 ; Example: Add registers
@@ -31,7 +32,10 @@ ADD R3, R1, #5   ; R3 = R1 + 5
 ADD R4, R3, R1   ; R4 = R3 + R1
 `;
 
+type Tab = "simulator" | "about";
+
 function Computer() {
+  const [activeTab, setActiveTab] = useState<Tab>("simulator");
   const [assembly, setAssembly] = useState(DEFAULT_ASSEMBLY);
   const [wasmLoaded, setWasmLoaded] = useState(false);
   const [programLoaded, setProgramLoaded] = useState(false);
@@ -97,56 +101,86 @@ function Computer() {
   };
 
   return (
-    <div className="min-h-screen bg-[#1a1a2e]">
-      <header className="bg-[#16213e] p-4 border-b-2 border-[#0f3460]">
-        <h1 className="text-2xl text-[#e94560]">
-          {wasmLoaded ? "LC-3b Simulator" : <span className="loading">LC-3b (loading...)</span>}
-        </h1>
+    <div className="min-h-screen bg-[#1a1a2e] flex flex-col">
+      <header className="bg-[#16213e] px-6 py-4 border-b-2 border-[#0f3460]">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl text-[#e94560] font-bold">
+            {wasmLoaded ? "LC-3b Simulator" : <span className="loading">LC-3b (loading...)</span>}
+          </h1>
+          <nav className="flex gap-1">
+            <button
+              onClick={() => setActiveTab("simulator")}
+              className={`px-4 py-2 rounded-t-md font-medium transition-colors ${
+                activeTab === "simulator"
+                  ? "bg-[#1a1a2e] text-[#4ecca3]"
+                  : "text-[#888] hover:text-[#ccc]"
+              }`}
+            >
+              Simulator
+            </button>
+            <button
+              onClick={() => setActiveTab("about")}
+              className={`px-4 py-2 rounded-t-md font-medium transition-colors ${
+                activeTab === "about"
+                  ? "bg-[#1a1a2e] text-[#4ecca3]"
+                  : "text-[#888] hover:text-[#ccc]"
+              }`}
+            >
+              About
+            </button>
+          </nav>
+        </div>
       </header>
 
-      <div className="flex h-[calc(100vh-60px)]">
-        {/* Editor Panel */}
-        <div className="flex-1 flex flex-col p-6 bg-[#1a1a2e]">
-          <label className="text-sm text-[#888] mb-2 uppercase tracking-wide">
-            LC-3b Assembly
-          </label>
-          <textarea
-            className="flex-1 bg-[#0f0f1a] border border-[#333] rounded-lg p-4 font-mono text-sm text-[#e0e0e0] resize-none leading-relaxed focus:outline-none focus:border-[#e94560] focus:ring-2 focus:ring-[#e94560]/20"
-            value={assembly}
-            onChange={(e) => {
-              setAssembly(e.target.value);
-              setProgramLoaded(false);
-            }}
-          />
-          <div className="flex gap-3 mt-4">
-            <button
-              onClick={handleLoadProgram}
-              disabled={!wasmLoaded}
-              className="px-6 py-3 bg-[#e94560] text-white font-semibold rounded-md hover:bg-[#d63850] hover:-translate-y-px transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Load Program
-            </button>
-            <button
-              onClick={handleNextInstruction}
-              disabled={!programLoaded}
-              className="px-6 py-3 bg-[#0f3460] text-white font-semibold rounded-md hover:bg-[#1a4a7a] hover:-translate-y-px transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Execute Next Instruction
-            </button>
+      {activeTab === "simulator" ? (
+        <div className="flex flex-1 h-[calc(100vh-68px)]">
+          {/* Editor Panel */}
+          <div className="flex-1 flex flex-col p-6 bg-[#1a1a2e]">
+            <label className="text-sm text-[#888] mb-2 uppercase tracking-wide">
+              LC-3b Assembly
+            </label>
+            <textarea
+              className="flex-1 bg-[#0f0f1a] border border-[#333] rounded-lg p-4 font-mono text-sm text-[#e0e0e0] resize-none leading-relaxed focus:outline-none focus:border-[#e94560] focus:ring-2 focus:ring-[#e94560]/20"
+              value={assembly}
+              onChange={(e) => {
+                setAssembly(e.target.value);
+                setProgramLoaded(false);
+              }}
+            />
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={handleLoadProgram}
+                disabled={!wasmLoaded}
+                className="px-6 py-3 bg-[#e94560] text-white font-semibold rounded-md hover:bg-[#d63850] hover:-translate-y-px transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Load Program
+              </button>
+              <button
+                onClick={handleNextInstruction}
+                disabled={!programLoaded}
+                className="px-6 py-3 bg-[#0f3460] text-white font-semibold rounded-md hover:bg-[#1a4a7a] hover:-translate-y-px transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Execute Next Instruction
+              </button>
+            </div>
+          </div>
+
+          {/* Computer Panel */}
+          <div className="w-80 bg-[#16213e] border-l-2 border-[#0f3460] p-6 overflow-y-auto">
+            <ProgramCounter programCounter={pc} />
+            <RegisterSet registers={registers} />
+            <StatusSection isLoaded={programLoaded} instructionCount={instructionCount} />
+            {programLoaded && (
+              <MemoryViewer programCounter={pc} readMemory={handleReadMemory} />
+            )}
+            <DebugLog />
           </div>
         </div>
-
-        {/* Computer Panel */}
-        <div className="w-80 bg-[#16213e] border-l-2 border-[#0f3460] p-6 overflow-y-auto">
-          <ProgramCounter programCounter={pc} />
-          <RegisterSet registers={registers} />
-          <StatusSection isLoaded={programLoaded} instructionCount={instructionCount} />
-          {programLoaded && (
-            <MemoryViewer programCounter={pc} readMemory={handleReadMemory} />
-          )}
-          <DebugLog />
+      ) : (
+        <div className="flex-1 overflow-y-auto">
+          <About />
         </div>
-      </div>
+      )}
     </div>
   );
 }
