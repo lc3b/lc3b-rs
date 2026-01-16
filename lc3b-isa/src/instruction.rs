@@ -89,6 +89,8 @@ impl FromStr for Immediate5 {
     type Err = eyre::Report;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Strip optional # prefix
+        let s = s.strip_prefix('#').unwrap_or(s);
         // TODO: range check
         Self::new(s.parse()?)
     }

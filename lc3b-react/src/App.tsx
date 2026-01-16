@@ -5,7 +5,7 @@ import Computer from "./Computer";
 function App() {
   return (
     <div className="App min-h-screen bg-gray-100">
-      <div className="container mx-auto px-4 max-w-4xl">
+      <div className="container mx-auto px-4 max-w-7xl">
         <Computer></Computer>
       </div>
     </div>

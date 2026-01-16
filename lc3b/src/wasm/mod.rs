@@ -46,3 +46,48 @@ pub fn new_computer(program: &str, callbacks: WasmCallbacksRegistry) -> Computer
 pub fn next_instruction(computer: &mut Computer) {
     computer.next_instruction();
 }
+
+#[wasm_bindgen]
+pub fn program_counter(computer: &Computer) -> u16 {
+    computer.program_counter()
+}
+
+#[wasm_bindgen]
+pub fn register0(computer: &Computer) -> u16 {
+    computer.register0()
+}
+
+#[wasm_bindgen]
+pub fn register1(computer: &Computer) -> u16 {
+    computer.register1()
+}
+
+#[wasm_bindgen]
+pub fn register2(computer: &Computer) -> u16 {
+    computer.register2()
+}
+
+#[wasm_bindgen]
+pub fn register3(computer: &Computer) -> u16 {
+    computer.register3()
+}
+
+#[wasm_bindgen]
+pub fn register4(computer: &Computer) -> u16 {
+    computer.register4()
+}
+
+#[wasm_bindgen]
+pub fn register5(computer: &Computer) -> u16 {
+    computer.register5()
+}
+
+#[wasm_bindgen]
+pub fn register6(computer: &Computer) -> u16 {
+    computer.register6()
+}
+
+#[wasm_bindgen]
+pub fn register7(computer: &Computer) -> u16 {
+    computer.register7()
+}

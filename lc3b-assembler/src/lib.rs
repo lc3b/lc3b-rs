@@ -14,7 +14,7 @@ struct LC3BAsmParser {}
 
 pub type Error = pest::error::Error<Rule>;
 
-pub fn parse_to_pairs(program: &str) -> Result<Pairs<Rule>, Box<Error>> {
+pub fn parse_to_pairs(program: &str) -> Result<Pairs<'_, Rule>, Box<Error>> {
     LC3BAsmParser::parse(Rule::program, program).map_err(Box::new)
 }
 
@@ -23,24 +23,29 @@ pub fn parse_to_program(program: &str) -> eyre::Result<Vec<Instruction>> {
         .next()
         .unwrap();
 
-    let instructions = program.into_inner();
+    let mut instructions = Vec::new();
 
-    let instructions = instructions
-        .filter_map(|i| match i.as_rule() {
-            Rule::instruction => Some(instruction_from_pair(i)),
-            Rule::comment => None,
-            other => unimplemented!("don't handle {:#?}", other),
-        })
-        .collect::<Vec<_>>();
-
-    if instructions.iter().any(Result::is_err) {
-        return Err(eyre::eyre!(
-            "there was an error parsing the program: {:#?}",
-            instructions
-        ));
+    for pair in program.into_inner() {
+        match pair.as_rule() {
+            Rule::line => {
+                for inner in pair.into_inner() {
+                    match inner.as_rule() {
+                        Rule::instruction_line => {
+                            for inst_part in inner.into_inner() {
+                                if inst_part.as_rule() == Rule::instruction {
+                                    instructions.push(instruction_from_pair(inst_part)?);
+                                }
+                            }
+                        }
+                        Rule::comment_line | Rule::empty_line => {}
+                        _ => {}
+                    }
+                }
+            }
+            Rule::EOI => {}
+            _ => {}
+        }
     }
-
-    let instructions = instructions.into_iter().flatten().collect();
 
     Ok(instructions)
 }
