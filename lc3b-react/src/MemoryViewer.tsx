@@ -25,7 +25,14 @@ function registerName(index: number): string {
   return `R${index & 0x7}`;
 }
 
-function decodeInstruction(word: number): { opcode: string; operands: string; description: string } {
+interface DecodedInstruction {
+  opcode: string;
+  variant: string;
+  operands: string;
+  comment: string;
+}
+
+function decodeInstruction(word: number): DecodedInstruction {
   const op = (word >> 12) & 0xf;
   const dr = (word >> 9) & 0x7;
   const sr1 = (word >> 6) & 0x7;
@@ -49,115 +56,146 @@ function decodeInstruction(word: number): { opcode: string; operands: string; de
     case 0b0000: { // BR
       const cond = (n ? "n" : "") + (z ? "z" : "") + (p ? "p" : "");
       return {
-        opcode: "BR" + cond,
+        opcode: "BR",
+        variant: `Br(${cond || "nzp"})`,
         operands: `${offset9Signed}`,
-        description: `Branch${cond ? ` if ${cond}` : ""} to PC + ${offset9Signed}`,
+        comment: `Branch${cond ? ` if ${cond}` : ""} to PC + ${offset9Signed * 2}`,
       };
     }
     case 0b0001: // ADD
       if (bit5) {
         return {
           opcode: "ADD",
+          variant: "AddImm",
           operands: `${registerName(dr)}, ${registerName(sr1)}, #${imm5Signed}`,
-          description: `${registerName(dr)} = ${registerName(sr1)} + ${imm5Signed}`,
+          comment: `${registerName(dr)} = ${registerName(sr1)} + ${imm5Signed}`,
         };
       } else {
         return {
           opcode: "ADD",
+          variant: "AddReg",
           operands: `${registerName(dr)}, ${registerName(sr1)}, ${registerName(sr2)}`,
-          description: `${registerName(dr)} = ${registerName(sr1)} + ${registerName(sr2)}`,
+          comment: `${registerName(dr)} = ${registerName(sr1)} + ${registerName(sr2)}`,
         };
       }
     case 0b0010: // LDB
       return {
         opcode: "LDB",
+        variant: "Ldb",
         operands: `${registerName(dr)}, ${registerName(sr1)}, #${offset6Signed}`,
-        description: `${registerName(dr)} = mem[${registerName(sr1)} + ${offset6Signed}] (byte)`,
+        comment: `${registerName(dr)} = mem[${registerName(sr1)} + ${offset6Signed}] (byte)`,
       };
     case 0b0011: // STB
       return {
         opcode: "STB",
+        variant: "Stb",
         operands: `${registerName(dr)}, ${registerName(sr1)}, #${offset6Signed}`,
-        description: `mem[${registerName(sr1)} + ${offset6Signed}] = ${registerName(dr)} (byte)`,
+        comment: `mem[${registerName(sr1)} + ${offset6Signed}] = ${registerName(dr)} (byte)`,
       };
     case 0b0100: // JSR/JSRR
       if (bit11) {
         return {
           opcode: "JSR",
+          variant: "Jsr",
           operands: `${offset11Signed}`,
-          description: `R7 = PC; PC = PC + ${offset11Signed}`,
+          comment: `R7 = PC; PC = PC + ${offset11Signed * 2}`,
         };
       } else {
         return {
           opcode: "JSRR",
+          variant: "Jsrr",
           operands: `${registerName(sr1)}`,
-          description: `R7 = PC; PC = ${registerName(sr1)}`,
+          comment: `R7 = PC; PC = ${registerName(sr1)}`,
         };
       }
     case 0b0101: // AND
       if (bit5) {
         return {
           opcode: "AND",
+          variant: "AndImm",
           operands: `${registerName(dr)}, ${registerName(sr1)}, #${imm5Signed}`,
-          description: `${registerName(dr)} = ${registerName(sr1)} & ${imm5Signed}`,
+          comment: `${registerName(dr)} = ${registerName(sr1)} & ${imm5Signed}`,
         };
       } else {
         return {
           opcode: "AND",
+          variant: "AndReg",
           operands: `${registerName(dr)}, ${registerName(sr1)}, ${registerName(sr2)}`,
-          description: `${registerName(dr)} = ${registerName(sr1)} & ${registerName(sr2)}`,
+          comment: `${registerName(dr)} = ${registerName(sr1)} & ${registerName(sr2)}`,
         };
       }
-    case 0b0110: // LDW
+    case 0b0110: // LDR (LDW in LC-3b)
       return {
-        opcode: "LDW",
+        opcode: "LDR",
+        variant: "Ldr",
         operands: `${registerName(dr)}, ${registerName(sr1)}, #${offset6Signed}`,
-        description: `${registerName(dr)} = mem[${registerName(sr1)} + ${offset6Signed * 2}] (word)`,
+        comment: `${registerName(dr)} = mem[${registerName(sr1)} + ${offset6Signed * 2}] (word)`,
       };
-    case 0b0111: // STW
+    case 0b0111: // STR (STW in LC-3b)
       return {
-        opcode: "STW",
+        opcode: "STR",
+        variant: "Str",
         operands: `${registerName(dr)}, ${registerName(sr1)}, #${offset6Signed}`,
-        description: `mem[${registerName(sr1)} + ${offset6Signed * 2}] = ${registerName(dr)} (word)`,
+        comment: `mem[${registerName(sr1)} + ${offset6Signed * 2}] = ${registerName(dr)} (word)`,
       };
     case 0b1000: // RTI
       return {
         opcode: "RTI",
+        variant: "Rti",
         operands: "",
-        description: "Return from interrupt",
+        comment: "Return from interrupt",
       };
     case 0b1001: // XOR/NOT
       if (bit5 && imm5 === 0x1f) {
         return {
           opcode: "NOT",
+          variant: "Not",
           operands: `${registerName(dr)}, ${registerName(sr1)}`,
-          description: `${registerName(dr)} = ~${registerName(sr1)}`,
+          comment: `${registerName(dr)} = ~${registerName(sr1)}`,
         };
       } else if (bit5) {
         return {
           opcode: "XOR",
+          variant: "XorImm",
           operands: `${registerName(dr)}, ${registerName(sr1)}, #${imm5Signed}`,
-          description: `${registerName(dr)} = ${registerName(sr1)} ^ ${imm5Signed}`,
+          comment: `${registerName(dr)} = ${registerName(sr1)} ^ ${imm5Signed}`,
         };
       } else {
         return {
           opcode: "XOR",
+          variant: "XorReg",
           operands: `${registerName(dr)}, ${registerName(sr1)}, ${registerName(sr2)}`,
-          description: `${registerName(dr)} = ${registerName(sr1)} ^ ${registerName(sr2)}`,
+          comment: `${registerName(dr)} = ${registerName(sr1)} ^ ${registerName(sr2)}`,
         };
       }
+    case 0b1010: // LDI
+      return {
+        opcode: "LDI",
+        variant: "Ldi",
+        operands: `${registerName(dr)}, ${registerName(sr1)}, #${offset6Signed}`,
+        comment: `${registerName(dr)} = mem[mem[${registerName(sr1)} + ${offset6Signed * 2}]]`,
+      };
+    case 0b1011: // STI
+      return {
+        opcode: "STI",
+        variant: "Sti",
+        operands: `${registerName(dr)}, ${registerName(sr1)}, #${offset6Signed}`,
+        comment: `mem[mem[${registerName(sr1)} + ${offset6Signed * 2}]] = ${registerName(dr)}`,
+      };
     case 0b1100: // JMP/RET
       if (sr1 === 7) {
         return {
           opcode: "RET",
+          variant: "Ret",
           operands: "",
-          description: "Return (PC = R7)",
+          comment: "Return (PC = R7)",
         };
       } else {
         return {
           opcode: "JMP",
+          variant: "Jmp",
           operands: `${registerName(sr1)}`,
-          description: `PC = ${registerName(sr1)}`,
+          comment: `PC = ${registerName(sr1)}`,
         };
       }
     case 0b1101: // SHF
@@ -166,27 +204,31 @@ function decodeInstruction(word: number): { opcode: string; operands: string; de
       if (shfType === 0) {
         return {
           opcode: "LSHF",
+          variant: "Shf(LSHF)",
           operands: `${registerName(dr)}, ${registerName(sr1)}, #${shfAmount}`,
-          description: `${registerName(dr)} = ${registerName(sr1)} << ${shfAmount}`,
+          comment: `${registerName(dr)} = ${registerName(sr1)} << ${shfAmount}`,
         };
       } else if (shfType === 1) {
         return {
           opcode: "RSHFL",
+          variant: "Shf(RSHFL)",
           operands: `${registerName(dr)}, ${registerName(sr1)}, #${shfAmount}`,
-          description: `${registerName(dr)} = ${registerName(sr1)} >>> ${shfAmount} (logical)`,
+          comment: `${registerName(dr)} = ${registerName(sr1)} >>> ${shfAmount} (logical)`,
         };
       } else {
         return {
           opcode: "RSHFA",
+          variant: "Shf(RSHFA)",
           operands: `${registerName(dr)}, ${registerName(sr1)}, #${shfAmount}`,
-          description: `${registerName(dr)} = ${registerName(sr1)} >> ${shfAmount} (arithmetic)`,
+          comment: `${registerName(dr)} = ${registerName(sr1)} >> ${shfAmount} (arithmetic)`,
         };
       }
     case 0b1110: // LEA
       return {
         opcode: "LEA",
+        variant: "Lea",
         operands: `${registerName(dr)}, #${offset9Signed}`,
-        description: `${registerName(dr)} = PC + ${offset9Signed * 2}`,
+        comment: `${registerName(dr)} = PC + ${offset9Signed * 2}`,
       };
     case 0b1111: // TRAP
       const trapNames: { [key: number]: string } = {
@@ -200,14 +242,16 @@ function decodeInstruction(word: number): { opcode: string; operands: string; de
       const trapName = trapNames[trapvect8] || `x${trapvect8.toString(16).toUpperCase()}`;
       return {
         opcode: "TRAP",
+        variant: `Trap(${trapName})`,
         operands: trapName,
-        description: `Trap ${trapName}`,
+        comment: `System call: ${trapName}`,
       };
     default:
       return {
         opcode: "???",
+        variant: "Unknown",
         operands: "",
-        description: "Reserved/Unknown opcode",
+        comment: "Reserved/Unknown opcode",
       };
   }
 }
@@ -243,8 +287,16 @@ function MemoryRow({ addr, value, isPC }: MemoryRowProps) {
       {expanded && (
         <div className="ml-2 mt-1 mb-2 bg-[#0a0a12] border border-[#333] rounded-md p-3 text-xs">
           <div className="mb-2 pb-2 border-b border-[#333]">
-            <span className="text-[#888]">Description: </span>
-            <span className="text-[#ccc]">{decoded.description}</span>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[#888]">Variant:</span>
+              <code className="font-mono text-[#e94560] bg-[#1a1a2e] px-1.5 py-0.5 rounded">
+                {decoded.variant}
+              </code>
+            </div>
+            <div>
+              <span className="text-[#888]">Comment: </span>
+              <span className="text-[#ccc]">{decoded.comment}</span>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
