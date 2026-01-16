@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 export interface RegisterSetProps {
   registers: {
     r0: number;
@@ -32,28 +34,42 @@ interface RegisterProps {
 }
 
 function Register({ name, value }: RegisterProps) {
+  const [expanded, setExpanded] = useState(false);
+
   return (
-    <div className="register bg-[#0f0f1a] rounded-md p-3 flex justify-between items-center relative cursor-pointer hover:bg-[#141424]">
-      <span className="text-sm text-[#888] font-semibold">{name}</span>
-      <span className="font-mono text-sm text-[#4ecca3]">{formatHex(value)}</span>
-      <div className="register-tooltip">
-        <div className="flex justify-between gap-4 py-0.5 text-xs">
-          <span className="text-[#888]">Hex</span>
-          <span className="font-mono text-[#4ecca3]">{formatHex(value)}</span>
-        </div>
-        <div className="flex justify-between gap-4 py-0.5 text-xs">
-          <span className="text-[#888]">Decimal</span>
-          <span className="font-mono text-[#4ecca3]">{value}</span>
-        </div>
-        <div className="flex justify-between gap-4 py-0.5 text-xs">
-          <span className="text-[#888]">Signed</span>
-          <span className="font-mono text-[#4ecca3]">{formatSigned(value)}</span>
-        </div>
-        <div className="flex justify-between gap-4 py-0.5 text-xs">
-          <span className="text-[#888]">Binary</span>
-          <span className="font-mono text-[#4ecca3]">{formatBinary(value)}</span>
+    <div className="relative">
+      <div
+        onClick={() => setExpanded(!expanded)}
+        className="bg-[#0f0f1a] rounded-md p-3 flex justify-between items-center cursor-pointer hover:bg-[#141424] select-none"
+      >
+        <span className="text-sm text-[#888] font-semibold">{name}</span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-sm text-[#4ecca3]">{formatHex(value)}</span>
+          <span className={`text-[#555] text-xs transition-transform ${expanded ? "rotate-180" : ""}`}>
+            ▼
+          </span>
         </div>
       </div>
+      {expanded && (
+        <div className="mt-1 bg-[#0a0a12] border border-[#333] rounded-md p-3 text-xs">
+          <div className="flex justify-between py-1">
+            <span className="text-[#888]">Hex</span>
+            <span className="font-mono text-[#4ecca3] select-all">{formatHex(value)}</span>
+          </div>
+          <div className="flex justify-between py-1">
+            <span className="text-[#888]">Decimal</span>
+            <span className="font-mono text-[#4ecca3] select-all">{value}</span>
+          </div>
+          <div className="flex justify-between py-1">
+            <span className="text-[#888]">Signed</span>
+            <span className="font-mono text-[#4ecca3] select-all">{formatSigned(value)}</span>
+          </div>
+          <div className="flex justify-between py-1">
+            <span className="text-[#888]">Binary</span>
+            <span className="font-mono text-[#4ecca3] select-all">{formatBinary(value)}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
