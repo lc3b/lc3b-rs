@@ -1,13 +1,9 @@
 #[allow(dead_code)]
-pub fn dump_slice_to_binary(bytes: &[u8]) -> String {
-    let mut string = String::with_capacity(bytes.len() * (8 + 2)); // a character for each bit and the newline
+pub fn dump_words_to_binary(words: &[u16]) -> String {
+    let mut string = String::with_capacity(words.len() * 17); // 16 bits + newline
 
-    for (i, byte) in bytes.iter().enumerate() {
-        string += &format!("{:08b}", byte);
-
-        if (i + 1) % 2 == 0 {
-            string += "\n";
-        }
+    for word in words.iter() {
+        string += &format!("{:016b}\n", word);
     }
 
     string
@@ -16,11 +12,11 @@ pub fn dump_slice_to_binary(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_dump_slice() {
-        let data = [0xDE, 0xAD, 0xBE, 0xEF];
+    fn test_dump_words() {
+        let data = [0xDEAD, 0xBEEF];
 
         let expected = "1101111010101101\n1011111011101111\n";
-        let dumped = super::dump_slice_to_binary(&data[..]);
+        let dumped = super::dump_words_to_binary(&data[..]);
 
         assert_eq!(expected, dumped);
     }

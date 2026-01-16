@@ -94,6 +94,13 @@ ADD R4, R3, R1   ; R4 = R3 + R1
                     </div>
                 </div>
 
+                <div class="memory-section">
+                    <div class="panel-title">Memory</div>
+                    <div class="memory-viewer" id="memory-viewer">
+                        <div class="memory-placeholder">Load a program to view memory</div>
+                    </div>
+                </div>
+
                 <details class="debug-section">
                     <summary class="panel-title debug-toggle">Emulator Debug Log</summary>
                     <div class="debug-log" id="debug-log"></div>
@@ -115,6 +122,7 @@ ADD R4, R3, R1   ; R4 = R3 + R1
                 register5,
                 register6,
                 register7,
+                read_memory,
                 WasmCallbacksRegistry,
             } from "./lc3b.js";
 
@@ -169,6 +177,41 @@ ADD R4, R3, R1   ; R4 = R3 + R1
                     return (value - 0x10000).toString();
                 }
                 return value.toString();
+            }
+
+            function decodeInstruction(word) {
+                const opcode = (word >> 12) & 0xF;
+                const opcodeNames = [
+                    "BR", "ADD", "LDB", "STB", "JSR", "AND", "LDW", "STW",
+                    "RTI", "XOR", "???", "???", "JMP", "SHF", "LEA", "TRAP"
+                ];
+                return opcodeNames[opcode];
+            }
+
+            function updateMemoryViewer() {
+                const viewer = document.getElementById("memory-viewer");
+                if (!computer) {
+                    viewer.innerHTML = '<div class="memory-placeholder">Load a program to view memory</div>';
+                    return;
+                }
+
+                const pc = program_counter(computer);
+                // Show 16 words centered on PC (PC-8 to PC+7)
+                const startAddr = Math.max(0, pc - 8);
+                const endAddr = Math.min(0xFFFF, startAddr + 15);
+
+                let html = '';
+                for (let addr = startAddr; addr <= endAddr; addr++) {
+                    const value = read_memory(computer, addr);
+                    const isPC = addr === pc;
+                    const decoded = decodeInstruction(value);
+                    html += `<div class="memory-row${isPC ? ' memory-row-pc' : ''}">
+                        <span class="memory-addr">${formatHex(addr)}</span>
+                        <span class="memory-value">${formatHex(value)}</span>
+                        <span class="memory-decoded">${decoded}</span>
+                    </div>`;
+                }
+                viewer.innerHTML = html;
             }
 
             function updateRegisterDisplay(index, value) {
@@ -256,6 +299,7 @@ ADD R4, R3, R1   ; R4 = R3 + R1
                 updatePCDisplay();
                 updateAllRegisters();
                 updateInstructionCount();
+                updateMemoryViewer();
                 setStatus(true);
             }
 
@@ -266,6 +310,7 @@ ADD R4, R3, R1   ; R4 = R3 + R1
                     updatePCDisplay();
                     updateAllRegisters();
                     updateInstructionCount();
+                    updateMemoryViewer();
                 }
             }
 

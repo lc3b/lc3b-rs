@@ -45,4 +45,18 @@ impl Register {
             Register::Register7 => 7,
         }
     }
+
+    pub fn from_index(index: u8) -> Self {
+        match index & 0b111 {
+            0 => Register::Register0,
+            1 => Register::Register1,
+            2 => Register::Register2,
+            3 => Register::Register3,
+            4 => Register::Register4,
+            5 => Register::Register5,
+            6 => Register::Register6,
+            7 => Register::Register7,
+            _ => unreachable!(),
+        }
+    }
 }

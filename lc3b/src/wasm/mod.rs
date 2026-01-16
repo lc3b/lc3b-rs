@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::*;
 
-use crate::{CallbacksRegistry, Computer, Program};
+use crate::{CallbacksRegistry, Computer, Program, USER_PROGRAM_START};
 
 #[wasm_bindgen]
 extern "C" {
@@ -36,10 +36,15 @@ impl WasmCallbacksRegistry {
 #[wasm_bindgen]
 pub fn new_computer(program: &str, callbacks: WasmCallbacksRegistry) -> Computer {
     let program = Program::from_assembly(program).unwrap();
+    let words = program.to_words();
+    
     let callbacks = CallbacksRegistry {
         hello: Callback::JS(callbacks.hello),
     };
-    Computer::new(program, callbacks)
+    
+    let mut computer = Computer::new(callbacks);
+    computer.load_program(&words, USER_PROGRAM_START);
+    computer
 }
 
 #[wasm_bindgen]
@@ -90,4 +95,9 @@ pub fn register6(computer: &Computer) -> u16 {
 #[wasm_bindgen]
 pub fn register7(computer: &Computer) -> u16 {
     computer.register7()
+}
+
+#[wasm_bindgen]
+pub fn read_memory(computer: &Computer, addr: u16) -> u16 {
+    computer.read_memory(addr)
 }
