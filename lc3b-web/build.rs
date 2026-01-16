@@ -1,71 +1,104 @@
 use std::path::PathBuf;
+use std::process::Command;
 
 use wasm_pack::command::build::{Build, BuildOptions, Target};
 
 fn main() {
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR");
-    let out_dir = std::path::PathBuf::from(std::env::var("OUT_DIR").expect("OUT_DIR"));
+    let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR"));
+    let workspace_root = manifest_dir.parent().expect("workspace root");
 
-    let parent_path = PathBuf::from(&manifest_dir).join("..");
-    let sibling_folders = list_folders(&parent_path.display().to_string()).unwrap();
+    let lc3b_path = workspace_root.join("lc3b");
+    let lc3b_react_path = workspace_root.join("lc3b-react");
+    let wasm_pkg_path = lc3b_path.join("pkg");
 
-    let lc3b_directory = sibling_folders
-        .iter()
-        .filter(|f| !f.contains("-assembler") && !f.contains("-isa") && !f.contains("-web"))
-        .find(|f| f.starts_with("lc3b"))
-        .expect("a sibling lc3b directory");
+    // Watch for changes in lc3b source files
+    println!("cargo::rerun-if-changed={}", lc3b_path.join("src").display());
+    println!("cargo::rerun-if-changed={}", lc3b_path.join("Cargo.toml").display());
+    
+    // Watch for changes in lc3b-react source files
+    println!("cargo::rerun-if-changed={}", lc3b_react_path.join("src").display());
+    println!("cargo::rerun-if-changed={}", lc3b_react_path.join("public").display());
+    println!("cargo::rerun-if-changed={}", lc3b_react_path.join("package.json").display());
+    println!("cargo::rerun-if-changed={}", lc3b_react_path.join("tsconfig.json").display());
+    println!("cargo::rerun-if-changed={}", lc3b_react_path.join("tailwind.config.js").display());
 
-    let lc3b_path = PathBuf::from(manifest_dir).join("..").join(lc3b_directory);
-
-    for path in glob::glob(&lc3b_path.display().to_string()).unwrap() {
-        println!("cargo::rerun-if-changed={}", path.unwrap().display())
-    }
-    for path in glob::glob(&lc3b_path.join("Cargo.*").display().to_string()).unwrap() {
-        println!("cargo::rerun-if-changed={}", path.unwrap().display())
-    }
-    for path in glob::glob(&lc3b_path.join("pkg/lc3b_bg.wasm").display().to_string()).unwrap() {
-        println!("cargo::rerun-if-changed={}", path.unwrap().display())
-    }
-
+    // Step 1: Build WASM to lc3b/pkg/ (where React expects it)
+    println!("cargo:warning=Building WASM module...");
     let build_opts = BuildOptions {
         path: Some(lc3b_path.clone()),
-        out_dir: out_dir.join("pkg").display().to_string(),
-        disable_dts: true,
+        out_dir: wasm_pkg_path.display().to_string(),
+        disable_dts: false, // Keep TypeScript definitions for React
         target: Target::Web,
         ..Default::default()
     };
     let mut build = Build::try_from_opts(build_opts).unwrap();
-    build.run().expect("wasm-pack build");
+    build.run().expect("wasm-pack build failed");
 
-    println!(
-        "cargo:rustc-env=LC3B_PKG_JS_PATH={}",
-        out_dir.join("pkg").join("lc3b.js").display().to_string()
-    );
-    println!(
-        "cargo:rustc-env=LC3B_PKG_WASM_PATH={}",
-        out_dir
-            .join("pkg")
-            .join("lc3b_bg.wasm")
-            .display()
-            .to_string()
-    );
-}
-
-fn list_folders(dir: &str) -> Result<Vec<String>, std::io::Error> {
-    let mut folders = Vec::new();
-
-    for entry in std::fs::read_dir(dir)? {
-        let entry = entry?;
-        let path = entry.path();
-
-        if path.is_dir() {
-            if let Some(folder_name) = path.file_name() {
-                if let Some(folder_name_str) = folder_name.to_str() {
-                    folders.push(folder_name_str.to_string());
-                }
-            }
+    // Step 2: Run npm install if node_modules doesn't exist
+    let node_modules = lc3b_react_path.join("node_modules");
+    if !node_modules.exists() {
+        println!("cargo:warning=Running npm install in lc3b-react...");
+        let status = Command::new("npm")
+            .arg("install")
+            .current_dir(&lc3b_react_path)
+            .status()
+            .expect("failed to run npm install");
+        if !status.success() {
+            panic!("npm install failed");
         }
     }
 
-    Ok(folders)
+    // Step 3: Build React app
+    println!("cargo:warning=Building React app...");
+    let status = Command::new("npm")
+        .arg("run")
+        .arg("build")
+        .current_dir(&lc3b_react_path)
+        .status()
+        .expect("failed to run npm run build");
+    if !status.success() {
+        panic!("npm run build failed");
+    }
+
+    // Step 4: Export paths to React build output for embedding
+    let react_build_path = lc3b_react_path.join("build");
+    
+    println!(
+        "cargo:rustc-env=REACT_INDEX_PATH={}",
+        react_build_path.join("index.html").display()
+    );
+    
+    // React build outputs JS/CSS with hashed filenames, we need to find them
+    let static_js_dir = react_build_path.join("static").join("js");
+    let static_css_dir = react_build_path.join("static").join("css");
+    
+    // Find the main JS bundle (main.*.js)
+    let main_js = find_file_matching(&static_js_dir, "main.*.js")
+        .expect("Could not find main.*.js in React build");
+    println!("cargo:rustc-env=REACT_MAIN_JS_PATH={}", main_js.display());
+    
+    // Find the main CSS bundle (main.*.css)
+    let main_css = find_file_matching(&static_css_dir, "main.*.css")
+        .expect("Could not find main.*.css in React build");
+    println!("cargo:rustc-env=REACT_MAIN_CSS_PATH={}", main_css.display());
+
+    // WASM files are now in lc3b/pkg/
+    println!(
+        "cargo:rustc-env=LC3B_PKG_JS_PATH={}",
+        wasm_pkg_path.join("lc3b.js").display()
+    );
+    println!(
+        "cargo:rustc-env=LC3B_PKG_WASM_PATH={}",
+        wasm_pkg_path.join("lc3b_bg.wasm").display()
+    );
+}
+
+fn find_file_matching(dir: &PathBuf, pattern: &str) -> Option<PathBuf> {
+    let pattern_path = dir.join(pattern);
+    for entry in glob::glob(&pattern_path.display().to_string()).ok()? {
+        if let Ok(path) = entry {
+            return Some(path);
+        }
+    }
+    None
 }
