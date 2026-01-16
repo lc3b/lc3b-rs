@@ -1,9 +1,25 @@
 program = {
-    (WHITE_SPACE* ~ instruction ~ WHITE_SPACE* ~ ";" ~ WHITE_SPACE* ~ comment ~ WHITE_SPACE* ~ NEWLINE?)+
+    SOI ~ (line ~ NEWLINE)* ~ line? ~ EOI
+}
+
+line = {
+    WHITE_SPACE* ~ (instruction_line | comment_line | empty_line)
+}
+
+instruction_line = {
+    instruction ~ WHITE_SPACE* ~ (";" ~ WHITE_SPACE* ~ comment)?
+}
+
+comment_line = {
+    ";" ~ WHITE_SPACE* ~ comment
+}
+
+empty_line = {
+    WHITE_SPACE*
 }
 
 instruction = {
-  opcode ~ WHITE_SPACE+ ~ operands
+    opcode ~ WHITE_SPACE+ ~ operands
 }
 
 opcode = {
@@ -15,7 +31,7 @@ operands = {
 }
 
 comment = {
-    (ASCII_ALPHANUMERIC | SPACE_SEPARATOR)*
+    (!NEWLINE ~ ANY)*
 }
 
 register = {
@@ -23,5 +39,5 @@ register = {
 }
 
 literal = {
-    ASCII_DIGIT+
+    "#"? ~ "-"? ~ ASCII_DIGIT+
 }

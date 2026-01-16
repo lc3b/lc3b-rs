@@ -7,10 +7,10 @@ pub struct CallbacksRegistry {
 }
 
 impl CallbacksRegistry {
-    pub fn call_hello(&self) {
+    pub fn call_hello(&self, pc: usize) {
         match self.hello {
             Callback::JS(ref function) => {
-                let callback_response = function.call0(&JsValue::NULL);
+                let callback_response = function.call0(&JsValue::from_f64(pc as f64));
                 match callback_response {
                     Ok(_) => (),
                     Err(e) => {

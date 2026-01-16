@@ -4,6 +4,7 @@ use axum::{http::StatusCode, response::IntoResponse, routing::get, Router};
 async fn main() {
     let app = Router::new()
         .route("/", get(get_root))
+        .route("/style.css", get(get_style_css))
         .route("/lc3b_bg.wasm", get(get_lc3b_wasm))
         .route("/lc3b.js", get(get_lc3b_js));
 
@@ -13,10 +14,23 @@ async fn main() {
 }
 
 async fn get_root() -> impl IntoResponse {
-    LC3B_INDEX_BYTES
+    (
+        StatusCode::OK,
+        [("content-type", "text/html")],
+        LC3B_INDEX_BYTES,
+    )
 }
 
 const LC3B_INDEX_BYTES: &[u8] = include_bytes!("../../templates/index.html");
+const LC3B_CSS_BYTES: &[u8] = include_bytes!("../../templates/style.css");
+
+async fn get_style_css() -> impl IntoResponse {
+    (
+        StatusCode::OK,
+        [("content-type", "text/css")],
+        LC3B_CSS_BYTES,
+    )
+}
 const LC3B_WASM_BYTES: &[u8] = include_bytes!(env!("LC3B_PKG_WASM_PATH"));
 
 async fn get_lc3b_wasm() -> impl IntoResponse {

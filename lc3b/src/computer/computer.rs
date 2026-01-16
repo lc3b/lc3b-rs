@@ -32,9 +32,45 @@ impl Computer {
 
         self.execute(instruction);
 
-        self.callbacks.call_hello();
+        self.callbacks.call_hello(self.program_counter as usize);
 
         self.program_counter += 1;
+    }
+
+    pub fn program_counter(&self) -> u16 {
+        self.program_counter
+    }
+
+    pub fn register0(&self) -> u16 {
+        self.registers[0]
+    }
+
+    pub fn register1(&self) -> u16 {
+        self.registers[1]
+    }
+
+    pub fn register2(&self) -> u16 {
+        self.registers[2]
+    }
+
+    pub fn register3(&self) -> u16 {
+        self.registers[3]
+    }
+
+    pub fn register4(&self) -> u16 {
+        self.registers[4]
+    }
+
+    pub fn register5(&self) -> u16 {
+        self.registers[5]
+    }
+
+    pub fn register6(&self) -> u16 {
+        self.registers[6]
+    }
+
+    pub fn register7(&self) -> u16 {
+        self.registers[7]
     }
 
     #[allow(unused_variables)]
