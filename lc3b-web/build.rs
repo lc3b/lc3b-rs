@@ -49,10 +49,12 @@ fn main() {
     }
 
     // Step 3: Build React app
+    // Set CI=false to prevent warnings from being treated as errors
     println!("cargo:warning=Building React app...");
     let status = Command::new("npm")
         .arg("run")
         .arg("build")
+        .env("CI", "false")
         .current_dir(&lc3b_react_path)
         .status()
         .expect("failed to run npm run build");
