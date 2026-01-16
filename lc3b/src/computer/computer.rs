@@ -1,12 +1,11 @@
 use lc3b_isa::{AddInstruction, Condition, Instruction, Register};
 use wasm_bindgen::prelude::*;
 
-use crate::{wasm::log, CallbacksRegistry, Memory, Program};
+use crate::{wasm::log, CallbacksRegistry, Memory, USER_PROGRAM_START};
 
 #[wasm_bindgen]
 #[allow(dead_code)]
 pub struct Computer {
-    program: Program,
     program_counter: u16,
     condition: Condition,
     callbacks: CallbacksRegistry,
@@ -15,10 +14,9 @@ pub struct Computer {
 }
 
 impl Computer {
-    pub fn new(program: Program, callbacks: CallbacksRegistry) -> Self {
+    pub fn new(callbacks: CallbacksRegistry) -> Self {
         Computer {
-            program,
-            program_counter: 0,
+            program_counter: USER_PROGRAM_START,
             condition: Condition::default(),
             callbacks,
             registers: [0u16; 8],
@@ -26,15 +24,27 @@ impl Computer {
         }
     }
 
-    pub fn next_instruction(&mut self) {
-        let instruction = self.load_instruction();
-        log(&format!("instruction: {:?}", instruction));
+    /// Load a program (as encoded u16 words) into memory at the specified address
+    pub fn load_program(&mut self, words: &[u16], start_addr: u16) {
+        self.memory.load_words(start_addr, words);
+        self.program_counter = start_addr;
+    }
 
-        self.execute(instruction);
+    pub fn next_instruction(&mut self) {
+        let instruction = self.fetch_instruction();
+        log(&format!("PC={:#06X} instruction: {:?}", self.program_counter, instruction));
+
+        match instruction {
+            Ok(inst) => {
+                self.execute(inst);
+                self.program_counter = self.program_counter.wrapping_add(1);
+            }
+            Err(e) => {
+                log(&format!("Decode error: {}", e));
+            }
+        }
 
         self.callbacks.call_hello(self.program_counter as usize);
-
-        self.program_counter += 1;
     }
 
     pub fn program_counter(&self) -> u16 {
@@ -73,6 +83,17 @@ impl Computer {
         self.registers[7]
     }
 
+    /// Read a word from memory
+    pub fn read_memory(&self, addr: u16) -> u16 {
+        self.memory.read_word(addr)
+    }
+
+    /// Fetch the instruction at the current PC from memory and decode it
+    fn fetch_instruction(&self) -> Result<Instruction, lc3b_isa::DecodeError> {
+        let word = self.memory.read_word(self.program_counter);
+        Instruction::try_from(word)
+    }
+
     #[allow(unused_variables)]
     pub fn execute(&mut self, instruction: Instruction) {
         match instruction {
@@ -109,10 +130,6 @@ impl Computer {
     pub fn store_register(&mut self, register: Register, value: u16) {
         let index = register.to_index();
         self.registers[index] = value;
-    }
-
-    pub fn load_instruction(&self) -> Instruction {
-        self.program.instructions[self.program_counter as usize]
     }
 
     pub fn perform_add_instruction(&mut self, add_instruction: AddInstruction) {

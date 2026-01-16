@@ -319,3 +319,60 @@ header h1 {
     border-color: #e94560;
     color: #e94560;
 }
+
+.memory-section {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+.memory-viewer {
+    background: #0f0f1a;
+    border-radius: 6px;
+    padding: 0.5rem;
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 0.75rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.memory-placeholder {
+    color: #555;
+    font-style: italic;
+    padding: 0.5rem;
+    text-align: center;
+}
+
+.memory-row {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+}
+
+.memory-row:hover {
+    background: #1a1a2e;
+}
+
+.memory-row-pc {
+    background: #0f3460;
+    border-left: 3px solid #e94560;
+}
+
+.memory-row-pc:hover {
+    background: #1a4a7a;
+}
+
+.memory-addr {
+    color: #888;
+    min-width: 50px;
+}
+
+.memory-value {
+    color: #4ecca3;
+    min-width: 50px;
+}
+
+.memory-decoded {
+    color: #e94560;
+    flex: 1;
+}
