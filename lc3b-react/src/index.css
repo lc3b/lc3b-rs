@@ -1,13 +1,114 @@
-body {
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-        "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
-        "Helvetica Neue", sans-serif;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: #1a1a2e;
+    color: #eee;
+    min-height: 100vh;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-    font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-        monospace;
+    font-family: "SF Mono", "Fira Code", "Monaco", "Consolas", monospace;
+}
+
+/* Custom theme colors */
+:root {
+    --bg-primary: #1a1a2e;
+    --bg-secondary: #16213e;
+    --bg-tertiary: #0f0f1a;
+    --accent-primary: #e94560;
+    --accent-secondary: #0f3460;
+    --accent-success: #4ecca3;
+    --text-primary: #eee;
+    --text-secondary: #888;
+    --border-color: #333;
+}
+
+/* Loading animation */
+.loading {
+    color: #888;
+    font-style: italic;
+}
+
+/* Panel title styling */
+.panel-title {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Register tooltip */
+.register-tooltip {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+    z-index: 10;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.register-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--border-color);
+}
+
+.register:hover .register-tooltip {
+    display: block;
+}
+
+/* Memory viewer */
+.memory-row {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+}
+
+.memory-row:hover {
+    background: #1a1a2e;
+}
+
+.memory-row-pc {
+    background: var(--accent-secondary);
+    border-left: 3px solid var(--accent-primary);
+}
+
+.memory-row-pc:hover {
+    background: #1a4a7a;
+}
+
+/* Debug section toggle */
+.debug-toggle {
+    cursor: pointer;
+    user-select: none;
+}
+
+.debug-toggle:hover {
+    color: #aaa;
 }

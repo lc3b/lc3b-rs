@@ -26,15 +26,30 @@ jobs:
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
 
-      - run: cd lc3b-rs/lc3b-web; cargo build
-      - run: ls lc3b-rs/target/debug/build/lc3b-web-*/out/pkg/lc3b_bg.wasm
-      - run: |
-          cp lc3b-rs/target/debug/build/lc3b-web-*/out/pkg/lc3b_bg.wasm lc3b.github.io/
-          cp lc3b-rs/target/debug/build/lc3b-web-*/out/pkg/lc3b.js lc3b.github.io/
-          cp lc3b-rs/lc3b-web/templates/index.html lc3b.github.io/
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: lc3b-rs/lc3b-react/package-lock.json
+
+      - name: Build lc3b-web (builds WASM and React)
+        run: cd lc3b-rs/lc3b-web && cargo build
+
+      - name: Copy build artifacts to GitHub Pages repo
+        run: |
+          # Clear old files
+          rm -f lc3b.github.io/*.wasm lc3b.github.io/*.js lc3b.github.io/*.html lc3b.github.io/*.css
+          rm -rf lc3b.github.io/static
+          
+          # Copy React build output
+          cp -r lc3b-rs/lc3b-react/build/* lc3b.github.io/
+          
+          # Copy WASM files (React build doesn't include these)
+          cp lc3b-rs/lc3b/pkg/lc3b_bg.wasm lc3b.github.io/
+          cp lc3b-rs/lc3b/pkg/lc3b.js lc3b.github.io/
 
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "Automated Commit"
           repository: lc3b.github.io
-          tagging_message: ${{  steps.ref_name.outputs.result }}
+          tagging_message: ${{ steps.ref_name.outputs.result }}
