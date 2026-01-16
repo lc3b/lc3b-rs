@@ -15,9 +15,13 @@ import init, {
   register6,
   register7,
   read_memory,
+  condition_n,
+  condition_z,
+  condition_p,
 } from "lc3b";
 
 import ProgramCounter from "./ProgramCounter";
+import ConditionCodes from "./ConditionCodes";
 import RegisterSet from "./RegisterSet";
 import MemoryViewer from "./MemoryViewer";
 import StatusSection from "./StatusSection";
@@ -42,6 +46,7 @@ function Computer() {
   const [programLoaded, setProgramLoaded] = useState(false);
   const [instructionCount, setInstructionCount] = useState(0);
   const [pc, setPc] = useState(0);
+  const [conditions, setConditions] = useState({ n: false, z: false, p: false });
   const [registers, setRegisters] = useState({
     r0: 0,
     r1: 0,
@@ -64,6 +69,11 @@ function Computer() {
   const updateState = () => {
     if (computerRef.current) {
       setPc(program_counter(computerRef.current));
+      setConditions({
+        n: condition_n(computerRef.current),
+        z: condition_z(computerRef.current),
+        p: condition_p(computerRef.current),
+      });
       setRegisters({
         r0: register0(computerRef.current),
         r1: register1(computerRef.current),
@@ -151,7 +161,7 @@ function Computer() {
               LC-3b Assembly
             </label>
             <textarea
-              className="flex-1 bg-[#0f0f1a] border border-[#333] rounded-lg p-4 font-mono text-sm text-[#e0e0e0] resize-none leading-relaxed focus:outline-none focus:border-[#e94560] focus:ring-2 focus:ring-[#e94560]/20"
+              className="h-48 min-h-[120px] max-h-[400px] bg-[#0f0f1a] border border-[#333] rounded-lg p-4 font-mono text-sm text-[#e0e0e0] resize-y leading-relaxed focus:outline-none focus:border-[#e94560] focus:ring-2 focus:ring-[#e94560]/20"
               value={assembly}
               onChange={(e) => {
                 setAssembly(e.target.value);
@@ -169,6 +179,7 @@ function Computer() {
               <button
                 onClick={handleNextInstruction}
                 disabled={!programLoaded}
+                title={!programLoaded ? "No program loaded" : undefined}
                 className="px-6 py-3 bg-[#0f3460] text-white font-semibold rounded-md hover:bg-[#1a4a7a] hover:-translate-y-px transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Execute Next Instruction
@@ -179,6 +190,7 @@ function Computer() {
           {/* Computer Panel - 25% wider (320px -> 400px) */}
           <div className="w-[400px] bg-[#16213e] border-l-2 border-[#0f3460] p-6 overflow-y-auto">
             <ProgramCounter programCounter={pc} />
+            <ConditionCodes n={conditions.n} z={conditions.z} p={conditions.p} />
             <RegisterSet registers={registers} />
             <StatusSection isLoaded={programLoaded} instructionCount={instructionCount} />
             {programLoaded && (

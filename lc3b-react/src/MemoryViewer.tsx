@@ -25,6 +25,135 @@ function registerName(index: number): string {
   return `R${index & 0x7}`;
 }
 
+interface BinarySegment {
+  bits: string;
+  label: string;
+  color: string;
+}
+
+function getBinaryBreakdown(word: number): BinarySegment[] {
+  const binary = formatBinary(word);
+  const op = (word >> 12) & 0xf;
+  const bit5 = (word >> 5) & 0x1;
+  const bit11 = (word >> 11) & 0x1;
+
+  // Opcode is always bits [15:12]
+  const opcode = binary.slice(0, 4);
+
+  switch (op) {
+    case 0b0000: // BR
+      return [
+        { bits: opcode, label: "opcode", color: "#e94560" },
+        { bits: binary.slice(4, 5), label: "n", color: "#4ecca3" },
+        { bits: binary.slice(5, 6), label: "z", color: "#4ecca3" },
+        { bits: binary.slice(6, 7), label: "p", color: "#4ecca3" },
+        { bits: binary.slice(7, 16), label: "PCoffset9", color: "#f0a500" },
+      ];
+    case 0b0001: // ADD
+    case 0b0101: // AND
+      if (bit5) {
+        return [
+          { bits: opcode, label: "opcode", color: "#e94560" },
+          { bits: binary.slice(4, 7), label: "DR", color: "#4ecca3" },
+          { bits: binary.slice(7, 10), label: "SR1", color: "#00d9ff" },
+          { bits: binary.slice(10, 11), label: "1", color: "#888" },
+          { bits: binary.slice(11, 16), label: "imm5", color: "#f0a500" },
+        ];
+      } else {
+        return [
+          { bits: opcode, label: "opcode", color: "#e94560" },
+          { bits: binary.slice(4, 7), label: "DR", color: "#4ecca3" },
+          { bits: binary.slice(7, 10), label: "SR1", color: "#00d9ff" },
+          { bits: binary.slice(10, 13), label: "0xx", color: "#888" },
+          { bits: binary.slice(13, 16), label: "SR2", color: "#ff6b9d" },
+        ];
+      }
+    case 0b0010: // LDB
+    case 0b0011: // STB
+    case 0b0110: // LDR
+    case 0b0111: // STR
+    case 0b1010: // LDI
+    case 0b1011: // STI
+      return [
+        { bits: opcode, label: "opcode", color: "#e94560" },
+        { bits: binary.slice(4, 7), label: op === 0b0011 || op === 0b0111 || op === 0b1011 ? "SR" : "DR", color: "#4ecca3" },
+        { bits: binary.slice(7, 10), label: "BaseR", color: "#00d9ff" },
+        { bits: binary.slice(10, 16), label: "offset6", color: "#f0a500" },
+      ];
+    case 0b0100: // JSR/JSRR
+      if (bit11) {
+        return [
+          { bits: opcode, label: "opcode", color: "#e94560" },
+          { bits: binary.slice(4, 5), label: "1", color: "#888" },
+          { bits: binary.slice(5, 16), label: "PCoffset11", color: "#f0a500" },
+        ];
+      } else {
+        return [
+          { bits: opcode, label: "opcode", color: "#e94560" },
+          { bits: binary.slice(4, 5), label: "0", color: "#888" },
+          { bits: binary.slice(5, 7), label: "xx", color: "#888" },
+          { bits: binary.slice(7, 10), label: "BaseR", color: "#00d9ff" },
+          { bits: binary.slice(10, 16), label: "xxxxxx", color: "#888" },
+        ];
+      }
+    case 0b1000: // RTI
+      return [
+        { bits: opcode, label: "opcode", color: "#e94560" },
+        { bits: binary.slice(4, 16), label: "(unused)", color: "#888" },
+      ];
+    case 0b1001: // XOR/NOT
+      if (bit5) {
+        return [
+          { bits: opcode, label: "opcode", color: "#e94560" },
+          { bits: binary.slice(4, 7), label: "DR", color: "#4ecca3" },
+          { bits: binary.slice(7, 10), label: "SR", color: "#00d9ff" },
+          { bits: binary.slice(10, 11), label: "1", color: "#888" },
+          { bits: binary.slice(11, 16), label: "imm5", color: "#f0a500" },
+        ];
+      } else {
+        return [
+          { bits: opcode, label: "opcode", color: "#e94560" },
+          { bits: binary.slice(4, 7), label: "DR", color: "#4ecca3" },
+          { bits: binary.slice(7, 10), label: "SR1", color: "#00d9ff" },
+          { bits: binary.slice(10, 13), label: "0xx", color: "#888" },
+          { bits: binary.slice(13, 16), label: "SR2", color: "#ff6b9d" },
+        ];
+      }
+    case 0b1100: // JMP/RET
+      return [
+        { bits: opcode, label: "opcode", color: "#e94560" },
+        { bits: binary.slice(4, 7), label: "xxx", color: "#888" },
+        { bits: binary.slice(7, 10), label: "BaseR", color: "#00d9ff" },
+        { bits: binary.slice(10, 16), label: "xxxxxx", color: "#888" },
+      ];
+    case 0b1101: // SHF
+      return [
+        { bits: opcode, label: "opcode", color: "#e94560" },
+        { bits: binary.slice(4, 7), label: "DR", color: "#4ecca3" },
+        { bits: binary.slice(7, 10), label: "SR", color: "#00d9ff" },
+        { bits: binary.slice(10, 12), label: "type", color: "#ff6b9d" },
+        { bits: binary.slice(12, 16), label: "amount4", color: "#f0a500" },
+      ];
+    case 0b1110: // LEA
+      return [
+        { bits: opcode, label: "opcode", color: "#e94560" },
+        { bits: binary.slice(4, 7), label: "DR", color: "#4ecca3" },
+        { bits: binary.slice(7, 16), label: "PCoffset9", color: "#f0a500" },
+      ];
+    case 0b1111: // TRAP
+      return [
+        { bits: opcode, label: "opcode", color: "#e94560" },
+        { bits: binary.slice(4, 8), label: "xxxx", color: "#888" },
+        { bits: binary.slice(8, 16), label: "trapvect8", color: "#f0a500" },
+      ];
+    default:
+      return [
+        { bits: opcode, label: "opcode", color: "#e94560" },
+        { bits: binary.slice(4, 16), label: "???", color: "#888" },
+      ];
+  }
+}
+
 interface DecodedInstruction {
   opcode: string;
   variant: string;
@@ -256,6 +385,43 @@ function decodeInstruction(word: number): DecodedInstruction {
   }
 }
 
+interface BinaryBreakdownProps {
+  word: number;
+}
+
+function BinaryBreakdown({ word }: BinaryBreakdownProps) {
+  const segments = getBinaryBreakdown(word);
+
+  return (
+    <div className="mt-2 pt-2 border-t border-[#333]">
+      <div className="text-[#888] mb-1">Encoding:</div>
+      <div className="flex font-mono text-sm">
+        {segments.map((seg, i) => (
+          <span
+            key={i}
+            className="px-0.5"
+            style={{ color: seg.color }}
+            title={seg.label}
+          >
+            {seg.bits}
+          </span>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[10px]">
+        {segments.map((seg, i) => (
+          <span key={i} className="flex items-center gap-1">
+            <span
+              className="w-2 h-2 rounded-sm"
+              style={{ backgroundColor: seg.color }}
+            />
+            <span className="text-[#888]">{seg.label}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 interface MemoryRowProps {
   addr: number;
   value: number;
@@ -320,6 +486,7 @@ function MemoryRow({ addr, value, isPC }: MemoryRowProps) {
             <span className="text-[#888]">Binary: </span>
             <span className="font-mono text-[#4ecca3] select-all">{formatBinary(value)}</span>
           </div>
+          <BinaryBreakdown word={value} />
         </div>
       )}
     </div>

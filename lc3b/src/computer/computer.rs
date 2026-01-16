@@ -83,6 +83,18 @@ impl Computer {
         self.registers[7]
     }
 
+    pub fn condition_n(&self) -> bool {
+        self.condition.n
+    }
+
+    pub fn condition_z(&self) -> bool {
+        self.condition.z
+    }
+
+    pub fn condition_p(&self) -> bool {
+        self.condition.p
+    }
+
     /// Read a word from memory
     pub fn read_memory(&self, addr: u16) -> u16 {
         self.memory.read_word(addr)
@@ -132,17 +144,36 @@ impl Computer {
         self.registers[index] = value;
     }
 
+    /// Update condition codes based on a value (typically the result stored in DR)
+    fn set_condition_codes(&mut self, value: u16) {
+        // Interpret as signed 16-bit
+        let signed_value = value as i16;
+        self.condition.n = signed_value < 0;
+        self.condition.z = signed_value == 0;
+        self.condition.p = signed_value > 0;
+    }
+
     pub fn perform_add_instruction(&mut self, add_instruction: AddInstruction) {
         match add_instruction {
-            AddInstruction::AddReg(register, register1, register2) => {
-                let value1 = self.load_register(register1);
-                let value2 = self.load_register(register2);
-                self.store_register(register, value1 + value2);
+            AddInstruction::AddReg(dr, sr1, sr2) => {
+                let value1 = self.load_register(sr1);
+                let value2 = self.load_register(sr2);
+                let result = value1.wrapping_add(value2);
+                self.store_register(dr, result);
+                self.set_condition_codes(result);
             }
-            AddInstruction::AddImm(register, register1, immediate5) => {
-                let value1 = self.load_register(register1);
-                let value2 = immediate5.to_value();
-                self.store_register(register, value1 + value2);
+            AddInstruction::AddImm(dr, sr1, immediate5) => {
+                let value1 = self.load_register(sr1);
+                // Sign-extend the 5-bit immediate
+                let imm5 = immediate5.value();
+                let value2 = if imm5 & 0x10 != 0 {
+                    (imm5 as u16) | 0xFFE0 // sign extend
+                } else {
+                    imm5 as u16
+                };
+                let result = value1.wrapping_add(value2);
+                self.store_register(dr, result);
+                self.set_condition_codes(result);
             }
         }
     }

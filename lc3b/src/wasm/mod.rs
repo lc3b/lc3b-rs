@@ -101,3 +101,18 @@ pub fn register7(computer: &Computer) -> u16 {
 pub fn read_memory(computer: &Computer, addr: u16) -> u16 {
     computer.read_memory(addr)
 }
+
+#[wasm_bindgen]
+pub fn condition_n(computer: &Computer) -> bool {
+    computer.condition_n()
+}
+
+#[wasm_bindgen]
+pub fn condition_z(computer: &Computer) -> bool {
+    computer.condition_z()
+}
+
+#[wasm_bindgen]
+pub fn condition_p(computer: &Computer) -> bool {
+    computer.condition_p()
+}

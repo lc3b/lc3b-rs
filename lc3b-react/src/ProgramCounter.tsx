@@ -8,14 +8,11 @@ function formatHex(value: number): string {
 
 function ProgramCounter({ programCounter }: ProgramCounterProps) {
   return (
-    <div className="mb-8">
-      <div className="panel-title">Program Counter</div>
-      <div className="bg-[#0f0f1a] rounded-lg p-4 text-center">
-        <div className="text-xs text-[#888] mb-1">PC</div>
-        <div className="font-mono text-2xl text-[#4ecca3] font-bold">
-          {formatHex(programCounter)}
-        </div>
-      </div>
+    <div className="mb-6 bg-[#0f0f1a] rounded-md p-3 flex items-center justify-between">
+      <span className="text-sm text-[#888] font-semibold">PC</span>
+      <span className="font-mono text-lg text-[#4ecca3] font-bold">
+        {formatHex(programCounter)}
+      </span>
     </div>
   );
 }
