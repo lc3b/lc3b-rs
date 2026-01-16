@@ -13,7 +13,8 @@ async fn main() {
         .route("/lc3b_bg.wasm", get(get_lc3b_wasm))
         .route("/lc3b.js", get(get_lc3b_js))
         .route("/static/js/{filename}", get(get_static_js))
-        .route("/static/css/{filename}", get(get_static_css));
+        .route("/static/css/{filename}", get(get_static_css))
+        .route("/static/media/{filename}", get(get_static_media));
 
     println!("LC-3b Simulator running at http://localhost:3000");
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
@@ -61,4 +62,13 @@ async fn get_static_js(Path(_filename): Path<String>) -> impl IntoResponse {
 async fn get_static_css(Path(_filename): Path<String>) -> impl IntoResponse {
     // All CSS requests serve the main stylesheet
     (StatusCode::OK, [("content-type", "text/css")], REACT_MAIN_CSS)
+}
+
+async fn get_static_media(Path(_filename): Path<String>) -> impl IntoResponse {
+    // Serve WASM file (webpack bundles it into static/media/)
+    (
+        StatusCode::OK,
+        [("content-type", "application/wasm")],
+        LC3B_WASM,
+    )
 }
