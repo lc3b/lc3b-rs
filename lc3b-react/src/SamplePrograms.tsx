@@ -12,7 +12,7 @@ export function SamplePrograms({ onLoadSample }: SampleProgramsProps) {
           Sample Programs
         </h2>
         <p className="text-[#ccc] mb-8">
-          Click "Load Assembly" to load a sample program into the simulator.
+          Click "Try This Program" to load a sample program into the simulator.
         </p>
 
         <div className="space-y-6">
@@ -36,7 +36,7 @@ export function SamplePrograms({ onLoadSample }: SampleProgramsProps) {
                 onClick={() => onLoadSample(sample.code)}
                 className="px-4 py-2 bg-[#e94560] hover:bg-[#d63850] text-white rounded-md font-medium transition-all hover:-translate-y-px"
               >
-                Load Assembly
+                Try this program
               </button>
             </div>
           ))}
