@@ -242,6 +242,10 @@ function Computer() {
         <div className="flex-1 overflow-y-auto">
           <Instructions />
         </div>
+      ) : activeTab === "samples" ? (
+        <div className="flex-1 overflow-y-auto">
+          <SamplePrograms onLoadSample={handleLoadSample} />
+        </div>
       ) : (
         <div className="flex-1 overflow-y-auto">
           <About />

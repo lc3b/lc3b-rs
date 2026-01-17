@@ -1,25 +1,38 @@
+// Horizontal whitespace only (no newlines)
+ws = _{ " " | "\t" }
+
 program = {
     SOI ~ (line ~ NEWLINE)* ~ line? ~ EOI
 }
 
 line = {
-    WHITE_SPACE* ~ (instruction_line | comment_line | empty_line)
+    ws* ~ (instruction_line | label_only_line | comment_line | empty_line)
 }
 
+// Label on its own line (no instruction)
+label_only_line = {
+    label ~ ws* ~ (";" ~ ws* ~ comment)?
+}
+
+// Instruction with optional preceding label
 instruction_line = {
-    instruction ~ WHITE_SPACE* ~ (";" ~ WHITE_SPACE* ~ comment)?
+    (label ~ ws*)? ~ instruction ~ ws* ~ (";" ~ ws* ~ comment)?
+}
+
+label = {
+    identifier ~ ws* ~ ":"
 }
 
 comment_line = {
-    ";" ~ WHITE_SPACE* ~ comment
+    ";" ~ ws* ~ comment
 }
 
 empty_line = {
-    WHITE_SPACE*
+    ws*
 }
 
 instruction = {
-    opcode ~ WHITE_SPACE+ ~ operands
+    opcode ~ ws+ ~ operands
 }
 
 opcode = {
@@ -27,7 +40,7 @@ opcode = {
 }
 
 operands = {
-    ((register | literal) ~ WHITE_SPACE* ~ ","? ~ WHITE_SPACE*)+
+    ((register | literal | identifier) ~ ws* ~ ","? ~ ws*)+
 }
 
 comment = {
@@ -40,4 +53,8 @@ register = {
 
 literal = {
     "#"? ~ "-"? ~ ASCII_DIGIT+
+}
+
+identifier = {
+    !register ~ ASCII_ALPHA ~ (ASCII_ALPHA | ASCII_DIGIT | "_")*
 }

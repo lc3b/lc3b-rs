@@ -215,11 +215,7 @@ impl Computer {
 
     pub fn perform_br_instruction(&mut self, condition: Condition, offset: PCOffset9) {
         // Check if any of the specified condition flags match the current condition codes
-        let branch_taken = (condition.n && self.condition.n)
-            || (condition.z && self.condition.z)
-            || (condition.p && self.condition.p);
-
-        if branch_taken {
+        if condition & self.condition {
             // The offset is relative to the incremented PC (PC+1)
             // Since next_instruction will add 1 after execute, we compute:
             // new_pc = (current_pc + 1) + offset - 1 = current_pc + offset

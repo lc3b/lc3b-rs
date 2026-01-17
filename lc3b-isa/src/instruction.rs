@@ -347,12 +347,23 @@ pub struct Immediate5(pub(crate) u8);
 
 impl Immediate5 {
     pub fn new(imm5: u8) -> eyre::Result<Self> {
-        assert!(imm5 < 32);
         if imm5 >= 32 {
             return Err(eyre::eyre!("value `{}` too large, must be < 32", imm5));
         }
 
         Ok(Immediate5(imm5))
+    }
+
+    /// Create from a signed value (-16 to 15)
+    pub fn from_signed(value: i8) -> eyre::Result<Self> {
+        if value < -16 || value > 15 {
+            return Err(eyre::eyre!(
+                "Immediate5 value {} out of range (-16 to 15)",
+                value
+            ));
+        }
+        // Store as 5-bit value
+        Ok(Immediate5((value as u8) & 0x1F))
     }
 
     pub fn value(&self) -> u8 {
@@ -366,8 +377,8 @@ impl FromStr for Immediate5 {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         // Strip optional # prefix
         let s = s.strip_prefix('#').unwrap_or(s);
-        // TODO: range check
-        Self::new(s.parse()?)
+        let value: i8 = s.parse()?;
+        Self::from_signed(value)
     }
 }
 
@@ -395,6 +406,15 @@ pub struct Condition {
     pub n: bool,
     pub z: bool,
     pub p: bool,
+}
+
+impl std::ops::BitAnd for Condition {
+    type Output = bool;
+
+    /// Returns true if any condition flag matches between self and rhs
+    fn bitand(self, rhs: Self) -> bool {
+        (self.n && rhs.n) || (self.z && rhs.z) || (self.p && rhs.p)
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
