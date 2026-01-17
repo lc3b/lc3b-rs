@@ -79,7 +79,7 @@ const instructions: InstructionInfo[] = [
   },
   {
     name: "JSR",
-    supported: false,
+    supported: true,
     summary: "Jump to subroutine. Saves return address in R7, then jumps to target.",
     variants: [
       {
@@ -92,7 +92,7 @@ const instructions: InstructionInfo[] = [
   },
   {
     name: "JSRR",
-    supported: false,
+    supported: true,
     summary: "Jump to subroutine via register. Saves return address in R7.",
     variants: [
       {

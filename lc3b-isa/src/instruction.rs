@@ -453,7 +453,25 @@ impl FromStr for PCOffset9 {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub struct PCOffset11(u16);
+pub struct PCOffset11(pub u16);
+
+impl PCOffset11 {
+    pub fn new(value: i16) -> Self {
+        // Store as 11-bit value (sign-extended when used)
+        PCOffset11((value as u16) & 0x7FF)
+    }
+
+    /// Sign-extend the 11-bit offset to 16 bits
+    pub fn sign_extend(&self) -> i16 {
+        if self.0 & 0x400 != 0 {
+            // Negative: sign-extend with 1s
+            (self.0 | 0xF800) as i16
+        } else {
+            self.0 as i16
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct PCOffset6(u8);
 

@@ -7,11 +7,7 @@
 use lc3b_assembler::parse_to_program;
 use lc3b_isa::{Instruction, Register};
 
-// Note: JSR and JSRR are not yet implemented in the assembler, so these tests are marked as ignored
-// until support is added.
-
 #[test]
-#[ignore = "JSR instruction not yet implemented in assembler"]
 fn test_jsr() {
     // JSR QUEUE ; Jump to subroutine at QUEUE
     let asm = r#"
@@ -28,7 +24,6 @@ QUEUE:  ADD R1, R1, #1
 }
 
 #[test]
-#[ignore = "JSR instruction not yet implemented in assembler"]
 fn test_jsr_encoding() {
     // JSR with offset 1 should encode as:
     // 0100 1 00000000001
@@ -45,7 +40,6 @@ QUEUE:  ADD R1, R1, #1
 }
 
 #[test]
-#[ignore = "JSRR instruction not yet implemented in assembler"]
 fn test_jsrr() {
     // JSRR R3 ; Jump to address in R3
     let asm = "JSRR R3";
@@ -59,7 +53,6 @@ fn test_jsrr() {
 }
 
 #[test]
-#[ignore = "JSRR instruction not yet implemented in assembler"]
 fn test_jsrr_encoding() {
     // JSRR R3 should encode as:
     // 0100 0 00 011 000000

@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, str::FromStr};
 
-use lc3b_isa::{AddInstruction, AndInstruction, Condition, Immediate5, Instruction, PCOffset9, Register};
+use lc3b_isa::{AddInstruction, AndInstruction, Condition, Immediate5, Instruction, PCOffset9, PCOffset11, Register};
 use pest::{
     iterators::{Pair, Pairs},
     Parser,
@@ -394,6 +394,31 @@ impl Assembler {
                 let src_reg = Register::from_str(arg_two)?;
 
                 Instruction::Not(dst_reg, src_reg)
+            }
+            "JSR" => {
+                let mut operands = inner.next().unwrap().into_inner();
+                let offset_arg = operands.next().unwrap();
+                let offset_value = self.resolve_label_or_offset(&offset_arg)?;
+                
+                // JSR uses PCOffset11, and the offset is left-shifted by 1 in hardware
+                // So we need to divide by 2 to get the actual offset stored
+                // Range check: -1024 to 1023 (11-bit signed)
+                if offset_value < -1024 || offset_value > 1023 {
+                    return Err(eyre::eyre!(
+                        "JSR offset {} out of range (-1024 to 1023)",
+                        offset_value
+                    ));
+                }
+                
+                let offset = PCOffset11::new(offset_value);
+                Instruction::Jsr(offset)
+            }
+            "JSRR" => {
+                let mut operands = inner.next().unwrap().into_inner();
+                let arg_one = operands.next().unwrap().as_str();
+                let base_reg = Register::from_str(arg_one)?;
+
+                Instruction::Jsrr(base_reg)
             }
             other => return Err(eyre::eyre!("unhandled opcode {:#?}", other)),
         };

@@ -1,4 +1,4 @@
-use lc3b_isa::{AddInstruction, AndInstruction, Condition, Instruction, PCOffset9, Register};
+use lc3b_isa::{AddInstruction, AndInstruction, Condition, Instruction, PCOffset9, PCOffset11, Register};
 use wasm_bindgen::prelude::*;
 
 use crate::{wasm::log, CallbacksRegistry, Memory, USER_PROGRAM_START};
@@ -129,8 +129,12 @@ impl Computer {
                 self.perform_br_instruction(condition, pcoffset9);
             }
             Instruction::Jmp(register) => todo!(),
-            Instruction::Jsr(pcoffset11) => todo!(),
-            Instruction::Jsrr(register) => todo!(),
+            Instruction::Jsr(pcoffset11) => {
+                self.perform_jsr_instruction(pcoffset11);
+            }
+            Instruction::Jsrr(register) => {
+                self.perform_jsrr_instruction(register);
+            }
             Instruction::Ldb(register, register1, pcoffset6) => todo!(),
             Instruction::Ldi(register, register1, pcoffset6) => todo!(),
             Instruction::Ldr(register, register1, pcoffset6) => todo!(),
@@ -238,5 +242,35 @@ impl Computer {
             self.program_counter = (self.program_counter as i16).wrapping_add(signed_offset) as u16;
         }
         // If branch not taken, do nothing - next_instruction will increment PC by 1
+    }
+
+    pub fn perform_jsr_instruction(&mut self, offset: PCOffset11) {
+        // Save the return address (PC+1) in R7
+        // Note: next_instruction will add 1 after execute, so we save current PC + 1
+        let return_addr = self.program_counter.wrapping_add(1);
+        self.store_register(Register::Register7, return_addr);
+
+        // Jump to PC + 1 + LSHF(SEXT(offset), 1)
+        // Since next_instruction adds 1 after execute, we set PC such that after +1 we get the target
+        // target = (PC+1) + LSHF(SEXT(offset), 1)
+        // So we set PC = target - 1 = PC + LSHF(SEXT(offset), 1)
+        let signed_offset = offset.sign_extend();
+        let shifted_offset = signed_offset << 1; // LSHF by 1 (multiply by 2 for word alignment)
+        self.program_counter = (self.program_counter as i16).wrapping_add(shifted_offset) as u16;
+    }
+
+    pub fn perform_jsrr_instruction(&mut self, base: Register) {
+        // Save the return address (PC+1) in R7
+        let return_addr = self.program_counter.wrapping_add(1);
+        
+        // Get the target address from the base register BEFORE we modify R7
+        // (in case base is R7)
+        let target = self.load_register(base);
+        
+        self.store_register(Register::Register7, return_addr);
+
+        // Jump to address in base register
+        // Since next_instruction adds 1 after execute, we set PC = target - 1
+        self.program_counter = target.wrapping_sub(1);
     }
 }
