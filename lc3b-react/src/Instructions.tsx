@@ -276,8 +276,8 @@ function Instructions() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold text-[#e94560] mb-2">LC-3b Instruction Set</h1>
-      <p className="text-[#888] mb-6">
+      <h1 className="text-3xl font-bold text-accent-primary mb-2">LC-3b Instruction Set</h1>
+      <p className="text-text-muted mb-6">
         {supportedCount} of {instructions.length} instructions implemented
       </p>
 
@@ -285,42 +285,42 @@ function Instructions() {
         {instructions.map((inst) => (
           <div
             key={inst.name}
-            className={`bg-[#16213e] rounded-lg p-4 border-l-4 ${
-              inst.supported ? "border-[#4ecca3]" : "border-[#555]"
+            className={`bg-bg-tertiary rounded-lg p-4 border-l-4 ${
+              inst.supported ? "border-accent-secondary" : "border-border-color"
             }`}
           >
             <div className="flex items-center gap-3 mb-2">
-              <h2 className="text-xl font-bold text-[#e94560]">{inst.name}</h2>
+              <h2 className="text-xl font-bold text-accent-primary">{inst.name}</h2>
               <span
                 className={`text-xs px-2 py-0.5 rounded ${
                   inst.supported
-                    ? "bg-[#4ecca3]/20 text-[#4ecca3]"
-                    : "bg-[#555]/20 text-[#888]"
+                    ? "bg-accent-secondary/20 text-accent-secondary"
+                    : "bg-border-color/20 text-text-muted"
                 }`}
               >
                 {inst.supported ? "Implemented" : "Not Implemented"}
               </span>
             </div>
-            <p className="text-[#ccc] mb-4">{inst.summary}</p>
+            <p className="text-text-primary mb-4">{inst.summary}</p>
 
             <div className="space-y-3">
               {inst.variants.map((variant) => (
-                <div key={variant.name} className="bg-[#0f0f1a] rounded-md p-3">
+                <div key={variant.name} className="bg-bg-primary rounded-md p-3">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="font-mono text-sm text-[#4ecca3] font-semibold">
+                    <span className="font-mono text-sm text-accent-secondary font-semibold">
                       {variant.name}
                     </span>
                   </div>
                   <div className="grid gap-2 text-sm">
                     <div>
-                      <span className="text-[#888]">Syntax: </span>
-                      <code className="font-mono text-[#e94560]">{variant.syntax}</code>
+                      <span className="text-text-muted">Syntax: </span>
+                      <code className="font-mono text-accent-primary">{variant.syntax}</code>
                     </div>
                     <div>
-                      <span className="text-[#888]">Encoding: </span>
-                      <code className="font-mono text-[#888]">{variant.encoding}</code>
+                      <span className="text-text-muted">Encoding: </span>
+                      <code className="font-mono text-text-muted">{variant.encoding}</code>
                     </div>
-                    <div className="text-[#aaa]">{variant.description}</div>
+                    <div className="text-text-secondary">{variant.description}</div>
                   </div>
                 </div>
               ))}
@@ -329,18 +329,18 @@ function Instructions() {
         ))}
       </div>
 
-      <div className="mt-8 p-4 bg-[#0f0f1a] rounded-lg">
-        <h3 className="text-lg font-semibold text-[#4ecca3] mb-2">Legend</h3>
-        <ul className="text-sm text-[#ccc] space-y-1">
-          <li><code className="text-[#e94560]">DR</code> - Destination Register (3 bits)</li>
-          <li><code className="text-[#e94560]">SR, SR1, SR2</code> - Source Register (3 bits)</li>
-          <li><code className="text-[#e94560]">BaseR</code> - Base Register (3 bits)</li>
-          <li><code className="text-[#e94560]">imm5</code> - 5-bit immediate, sign-extended</li>
-          <li><code className="text-[#e94560]">offset6</code> - 6-bit offset, sign-extended and left-shifted</li>
-          <li><code className="text-[#e94560]">PCoffset9</code> - 9-bit PC-relative offset</li>
-          <li><code className="text-[#e94560]">PCoffset11</code> - 11-bit PC-relative offset</li>
-          <li><code className="text-[#e94560]">SEXT</code> - Sign-extend to 16 bits</li>
-          <li><code className="text-[#e94560]">LSHF</code> - Left shift by 1 (multiply by 2 for word alignment)</li>
+      <div className="mt-8 p-4 bg-bg-primary rounded-lg">
+        <h3 className="text-lg font-semibold text-accent-secondary mb-2">Legend</h3>
+        <ul className="text-sm text-text-primary space-y-1">
+          <li><code className="text-accent-primary">DR</code> - Destination Register (3 bits)</li>
+          <li><code className="text-accent-primary">SR, SR1, SR2</code> - Source Register (3 bits)</li>
+          <li><code className="text-accent-primary">BaseR</code> - Base Register (3 bits)</li>
+          <li><code className="text-accent-primary">imm5</code> - 5-bit immediate, sign-extended</li>
+          <li><code className="text-accent-primary">offset6</code> - 6-bit offset, sign-extended and left-shifted</li>
+          <li><code className="text-accent-primary">PCoffset9</code> - 9-bit PC-relative offset</li>
+          <li><code className="text-accent-primary">PCoffset11</code> - 11-bit PC-relative offset</li>
+          <li><code className="text-accent-primary">SEXT</code> - Sign-extend to 16 bits</li>
+          <li><code className="text-accent-primary">LSHF</code> - Left shift by 1 (multiply by 2 for word alignment)</li>
         </ul>
       </div>
     </div>

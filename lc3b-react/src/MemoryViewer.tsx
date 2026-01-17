@@ -28,7 +28,7 @@ function registerName(index: number): string {
 interface BinarySegment {
   bits: string;
   label: string;
-  color: string;
+  colorClass: string;
 }
 
 function getBinaryBreakdown(word: number): BinarySegment[] {
@@ -43,29 +43,29 @@ function getBinaryBreakdown(word: number): BinarySegment[] {
   switch (op) {
     case 0b0000: // BR
       return [
-        { bits: opcode, label: "opcode", color: "#e94560" },
-        { bits: binary.slice(4, 5), label: "n", color: "#4ecca3" },
-        { bits: binary.slice(5, 6), label: "z", color: "#4ecca3" },
-        { bits: binary.slice(6, 7), label: "p", color: "#4ecca3" },
-        { bits: binary.slice(7, 16), label: "PCoffset9", color: "#f0a500" },
+        { bits: opcode, label: "opcode", colorClass: "text-accent-primary" },
+        { bits: binary.slice(4, 5), label: "n", colorClass: "text-accent-secondary" },
+        { bits: binary.slice(5, 6), label: "z", colorClass: "text-accent-secondary" },
+        { bits: binary.slice(6, 7), label: "p", colorClass: "text-accent-secondary" },
+        { bits: binary.slice(7, 16), label: "PCoffset9", colorClass: "text-accent-tertiary" },
       ];
     case 0b0001: // ADD
     case 0b0101: // AND
       if (bit5) {
         return [
-          { bits: opcode, label: "opcode", color: "#e94560" },
-          { bits: binary.slice(4, 7), label: "DR", color: "#4ecca3" },
-          { bits: binary.slice(7, 10), label: "SR1", color: "#00d9ff" },
-          { bits: binary.slice(10, 11), label: "1", color: "#888" },
-          { bits: binary.slice(11, 16), label: "imm5", color: "#f0a500" },
+          { bits: opcode, label: "opcode", colorClass: "text-accent-primary" },
+          { bits: binary.slice(4, 7), label: "DR", colorClass: "text-accent-secondary" },
+          { bits: binary.slice(7, 10), label: "SR1", colorClass: "text-accent-quaternary" },
+          { bits: binary.slice(10, 11), label: "1", colorClass: "text-text-muted" },
+          { bits: binary.slice(11, 16), label: "imm5", colorClass: "text-accent-tertiary" },
         ];
       } else {
         return [
-          { bits: opcode, label: "opcode", color: "#e94560" },
-          { bits: binary.slice(4, 7), label: "DR", color: "#4ecca3" },
-          { bits: binary.slice(7, 10), label: "SR1", color: "#00d9ff" },
-          { bits: binary.slice(10, 13), label: "0xx", color: "#888" },
-          { bits: binary.slice(13, 16), label: "SR2", color: "#ff6b9d" },
+          { bits: opcode, label: "opcode", colorClass: "text-accent-primary" },
+          { bits: binary.slice(4, 7), label: "DR", colorClass: "text-accent-secondary" },
+          { bits: binary.slice(7, 10), label: "SR1", colorClass: "text-accent-quaternary" },
+          { bits: binary.slice(10, 13), label: "0xx", colorClass: "text-text-muted" },
+          { bits: binary.slice(13, 16), label: "SR2", colorClass: "text-accent-quinary" },
         ];
       }
     case 0b0010: // LDB
@@ -75,81 +75,81 @@ function getBinaryBreakdown(word: number): BinarySegment[] {
     case 0b1010: // LDI
     case 0b1011: // STI
       return [
-        { bits: opcode, label: "opcode", color: "#e94560" },
-        { bits: binary.slice(4, 7), label: op === 0b0011 || op === 0b0111 || op === 0b1011 ? "SR" : "DR", color: "#4ecca3" },
-        { bits: binary.slice(7, 10), label: "BaseR", color: "#00d9ff" },
-        { bits: binary.slice(10, 16), label: "offset6", color: "#f0a500" },
+        { bits: opcode, label: "opcode", colorClass: "text-accent-primary" },
+        { bits: binary.slice(4, 7), label: op === 0b0011 || op === 0b0111 || op === 0b1011 ? "SR" : "DR", colorClass: "text-accent-secondary" },
+        { bits: binary.slice(7, 10), label: "BaseR", colorClass: "text-accent-quaternary" },
+        { bits: binary.slice(10, 16), label: "offset6", colorClass: "text-accent-tertiary" },
       ];
     case 0b0100: // JSR/JSRR
       if (bit11) {
         return [
-          { bits: opcode, label: "opcode", color: "#e94560" },
-          { bits: binary.slice(4, 5), label: "1", color: "#888" },
-          { bits: binary.slice(5, 16), label: "PCoffset11", color: "#f0a500" },
+          { bits: opcode, label: "opcode", colorClass: "text-accent-primary" },
+          { bits: binary.slice(4, 5), label: "1", colorClass: "text-text-muted" },
+          { bits: binary.slice(5, 16), label: "PCoffset11", colorClass: "text-accent-tertiary" },
         ];
       } else {
         return [
-          { bits: opcode, label: "opcode", color: "#e94560" },
-          { bits: binary.slice(4, 5), label: "0", color: "#888" },
-          { bits: binary.slice(5, 7), label: "xx", color: "#888" },
-          { bits: binary.slice(7, 10), label: "BaseR", color: "#00d9ff" },
-          { bits: binary.slice(10, 16), label: "xxxxxx", color: "#888" },
+          { bits: opcode, label: "opcode", colorClass: "text-accent-primary" },
+          { bits: binary.slice(4, 5), label: "0", colorClass: "text-text-muted" },
+          { bits: binary.slice(5, 7), label: "xx", colorClass: "text-text-muted" },
+          { bits: binary.slice(7, 10), label: "BaseR", colorClass: "text-accent-quaternary" },
+          { bits: binary.slice(10, 16), label: "xxxxxx", colorClass: "text-text-muted" },
         ];
       }
     case 0b1000: // RTI
       return [
-        { bits: opcode, label: "opcode", color: "#e94560" },
-        { bits: binary.slice(4, 16), label: "(unused)", color: "#888" },
+        { bits: opcode, label: "opcode", colorClass: "text-accent-primary" },
+        { bits: binary.slice(4, 16), label: "(unused)", colorClass: "text-text-muted" },
       ];
     case 0b1001: // XOR/NOT
       if (bit5) {
         return [
-          { bits: opcode, label: "opcode", color: "#e94560" },
-          { bits: binary.slice(4, 7), label: "DR", color: "#4ecca3" },
-          { bits: binary.slice(7, 10), label: "SR", color: "#00d9ff" },
-          { bits: binary.slice(10, 11), label: "1", color: "#888" },
-          { bits: binary.slice(11, 16), label: "imm5", color: "#f0a500" },
+          { bits: opcode, label: "opcode", colorClass: "text-accent-primary" },
+          { bits: binary.slice(4, 7), label: "DR", colorClass: "text-accent-secondary" },
+          { bits: binary.slice(7, 10), label: "SR", colorClass: "text-accent-quaternary" },
+          { bits: binary.slice(10, 11), label: "1", colorClass: "text-text-muted" },
+          { bits: binary.slice(11, 16), label: "imm5", colorClass: "text-accent-tertiary" },
         ];
       } else {
         return [
-          { bits: opcode, label: "opcode", color: "#e94560" },
-          { bits: binary.slice(4, 7), label: "DR", color: "#4ecca3" },
-          { bits: binary.slice(7, 10), label: "SR1", color: "#00d9ff" },
-          { bits: binary.slice(10, 13), label: "0xx", color: "#888" },
-          { bits: binary.slice(13, 16), label: "SR2", color: "#ff6b9d" },
+          { bits: opcode, label: "opcode", colorClass: "text-accent-primary" },
+          { bits: binary.slice(4, 7), label: "DR", colorClass: "text-accent-secondary" },
+          { bits: binary.slice(7, 10), label: "SR1", colorClass: "text-accent-quaternary" },
+          { bits: binary.slice(10, 13), label: "0xx", colorClass: "text-text-muted" },
+          { bits: binary.slice(13, 16), label: "SR2", colorClass: "text-accent-quinary" },
         ];
       }
     case 0b1100: // JMP/RET
       return [
-        { bits: opcode, label: "opcode", color: "#e94560" },
-        { bits: binary.slice(4, 7), label: "xxx", color: "#888" },
-        { bits: binary.slice(7, 10), label: "BaseR", color: "#00d9ff" },
-        { bits: binary.slice(10, 16), label: "xxxxxx", color: "#888" },
+        { bits: opcode, label: "opcode", colorClass: "text-accent-primary" },
+        { bits: binary.slice(4, 7), label: "xxx", colorClass: "text-text-muted" },
+        { bits: binary.slice(7, 10), label: "BaseR", colorClass: "text-accent-quaternary" },
+        { bits: binary.slice(10, 16), label: "xxxxxx", colorClass: "text-text-muted" },
       ];
     case 0b1101: // SHF
       return [
-        { bits: opcode, label: "opcode", color: "#e94560" },
-        { bits: binary.slice(4, 7), label: "DR", color: "#4ecca3" },
-        { bits: binary.slice(7, 10), label: "SR", color: "#00d9ff" },
-        { bits: binary.slice(10, 12), label: "type", color: "#ff6b9d" },
-        { bits: binary.slice(12, 16), label: "amount4", color: "#f0a500" },
+        { bits: opcode, label: "opcode", colorClass: "text-accent-primary" },
+        { bits: binary.slice(4, 7), label: "DR", colorClass: "text-accent-secondary" },
+        { bits: binary.slice(7, 10), label: "SR", colorClass: "text-accent-quaternary" },
+        { bits: binary.slice(10, 12), label: "type", colorClass: "text-accent-quinary" },
+        { bits: binary.slice(12, 16), label: "amount4", colorClass: "text-accent-tertiary" },
       ];
     case 0b1110: // LEA
       return [
-        { bits: opcode, label: "opcode", color: "#e94560" },
-        { bits: binary.slice(4, 7), label: "DR", color: "#4ecca3" },
-        { bits: binary.slice(7, 16), label: "PCoffset9", color: "#f0a500" },
+        { bits: opcode, label: "opcode", colorClass: "text-accent-primary" },
+        { bits: binary.slice(4, 7), label: "DR", colorClass: "text-accent-secondary" },
+        { bits: binary.slice(7, 16), label: "PCoffset9", colorClass: "text-accent-tertiary" },
       ];
     case 0b1111: // TRAP
       return [
-        { bits: opcode, label: "opcode", color: "#e94560" },
-        { bits: binary.slice(4, 8), label: "xxxx", color: "#888" },
-        { bits: binary.slice(8, 16), label: "trapvect8", color: "#f0a500" },
+        { bits: opcode, label: "opcode", colorClass: "text-accent-primary" },
+        { bits: binary.slice(4, 8), label: "xxxx", colorClass: "text-text-muted" },
+        { bits: binary.slice(8, 16), label: "trapvect8", colorClass: "text-accent-tertiary" },
       ];
     default:
       return [
-        { bits: opcode, label: "opcode", color: "#e94560" },
-        { bits: binary.slice(4, 16), label: "???", color: "#888" },
+        { bits: opcode, label: "opcode", colorClass: "text-accent-primary" },
+        { bits: binary.slice(4, 16), label: "???", colorClass: "text-text-muted" },
       ];
   }
 }
@@ -393,14 +393,13 @@ function BinaryBreakdown({ word }: BinaryBreakdownProps) {
   const segments = getBinaryBreakdown(word);
 
   return (
-    <div className="mt-2 pt-2 border-t border-[#333]">
-      <div className="text-[#888] mb-1">Encoding:</div>
+    <div className="mt-2 pt-2 border-t border-border-color">
+      <div className="text-text-muted mb-1">Encoding:</div>
       <div className="flex font-mono text-sm">
         {segments.map((seg, i) => (
           <span
             key={i}
-            className="px-0.5"
-            style={{ color: seg.color }}
+            className={`px-0.5 ${seg.colorClass}`}
             title={seg.label}
           >
             {seg.bits}
@@ -411,10 +410,9 @@ function BinaryBreakdown({ word }: BinaryBreakdownProps) {
         {segments.map((seg, i) => (
           <span key={i} className="flex items-center gap-1">
             <span
-              className="w-2 h-2 rounded-sm"
-              style={{ backgroundColor: seg.color }}
+              className={`w-2 h-2 rounded-sm ${seg.colorClass.replace('text-', 'bg-')}`}
             />
-            <span className="text-[#888]">{seg.label}</span>
+            <span className="text-text-muted">{seg.label}</span>
           </span>
         ))}
       </div>
@@ -438,53 +436,53 @@ function MemoryRow({ addr, value, isPC }: MemoryRowProps) {
         onClick={() => setExpanded(!expanded)}
         className={`flex gap-3 px-2 py-1 rounded cursor-pointer select-none ${
           isPC
-            ? "bg-[#0f3460] border-l-[3px] border-[#e94560]"
-            : "hover:bg-[#1a1a2e]"
+            ? "bg-bg-highlight border-l-[3px] border-accent-primary"
+            : "hover:bg-bg-secondary"
         }`}
       >
-        <span className="text-[#888] min-w-[50px]">{formatHex(addr)}</span>
-        <span className="font-mono text-[#4ecca3] min-w-[50px]">{formatHex(value)}</span>
-        <span className="text-[#e94560] font-semibold min-w-[45px]">{decoded.opcode}</span>
-        <span className="text-[#ccc] flex-1 truncate">{decoded.operands}</span>
-        <span className={`text-[#555] text-xs transition-transform ${expanded ? "rotate-180" : ""}`}>
+        <span className="text-text-muted min-w-[50px]">{formatHex(addr)}</span>
+        <span className="font-mono text-accent-secondary min-w-[50px]">{formatHex(value)}</span>
+        <span className="text-accent-primary font-semibold min-w-[45px]">{decoded.opcode}</span>
+        <span className="text-text-primary flex-1 truncate">{decoded.operands}</span>
+        <span className={`text-text-muted text-xs transition-transform ${expanded ? "rotate-180" : ""}`}>
           ▼
         </span>
       </div>
       {expanded && (
-        <div className="ml-2 mt-1 mb-2 bg-[#0a0a12] border border-[#333] rounded-md p-3 text-xs">
-          <div className="mb-2 pb-2 border-b border-[#333]">
+        <div className="ml-2 mt-1 mb-2 bg-bg-primary border border-border-color rounded-md p-3 text-xs">
+          <div className="mb-2 pb-2 border-b border-border-color">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-[#888]">Variant:</span>
-              <code className="font-mono text-[#e94560] bg-[#1a1a2e] px-1.5 py-0.5 rounded">
+              <span className="text-text-muted">Variant:</span>
+              <code className="font-mono text-accent-primary bg-bg-secondary px-1.5 py-0.5 rounded">
                 {decoded.variant}
               </code>
             </div>
             <div>
-              <span className="text-[#888]">Comment: </span>
-              <span className="text-[#ccc]">{decoded.comment}</span>
+              <span className="text-text-muted">Comment: </span>
+              <span className="text-text-primary">{decoded.comment}</span>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <span className="text-[#888]">Address: </span>
-              <span className="font-mono text-[#4ecca3] select-all">{formatHex(addr)}</span>
+              <span className="text-text-muted">Address: </span>
+              <span className="font-mono text-accent-secondary select-all">{formatHex(addr)}</span>
             </div>
             <div>
-              <span className="text-[#888]">Hex: </span>
-              <span className="font-mono text-[#4ecca3] select-all">{formatHex(value)}</span>
+              <span className="text-text-muted">Hex: </span>
+              <span className="font-mono text-accent-secondary select-all">{formatHex(value)}</span>
             </div>
             <div>
-              <span className="text-[#888]">Decimal: </span>
-              <span className="font-mono text-[#4ecca3] select-all">{value}</span>
+              <span className="text-text-muted">Decimal: </span>
+              <span className="font-mono text-accent-secondary select-all">{value}</span>
             </div>
             <div>
-              <span className="text-[#888]">Signed: </span>
-              <span className="font-mono text-[#4ecca3] select-all">{formatSigned(value)}</span>
+              <span className="text-text-muted">Signed: </span>
+              <span className="font-mono text-accent-secondary select-all">{formatSigned(value)}</span>
             </div>
           </div>
           <div className="mt-2">
-            <span className="text-[#888]">Binary: </span>
-            <span className="font-mono text-[#4ecca3] select-all">{formatBinary(value)}</span>
+            <span className="text-text-muted">Binary: </span>
+            <span className="font-mono text-accent-secondary select-all">{formatBinary(value)}</span>
           </div>
           <BinaryBreakdown word={value} />
         </div>
@@ -514,11 +512,11 @@ function MemoryViewer({ programCounter, readMemory }: MemoryViewerProps) {
   return (
     <div className="mt-8 mb-4">
       <div className="panel-title">Memory</div>
-      <div className="bg-[#0f0f1a] rounded-md p-2 font-mono text-xs max-h-[350px] overflow-y-auto">
+      <div className="bg-bg-primary rounded-md p-2 font-mono text-xs max-h-[350px] overflow-y-auto">
         {rows.length > 0 ? (
           rows
         ) : (
-          <div className="text-[#555] italic p-2 text-center">
+          <div className="text-text-muted italic p-2 text-center">
             Load a program to view memory
           </div>
         )}

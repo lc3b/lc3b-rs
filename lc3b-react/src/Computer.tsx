@@ -29,6 +29,7 @@ import DebugLog from "./DebugLog";
 import About from "./About";
 import Instructions from "./Instructions";
 import { SamplePrograms } from "./SamplePrograms";
+import { ThemeToggle } from "./ThemeContext";
 
 const DEFAULT_ASSEMBLY = `; LC-3b Assembly Program
 ; Example: Add registers
@@ -90,7 +91,6 @@ function Computer() {
   };
 
   const handleLoadProgram = () => {
-    // Callback must not access computer while it's borrowed by next_instruction
     const callbacks = WasmCallbacksRegistry.new(() => {});
     const result: ComputerResult = new_computer(assembly, callbacks);
     
@@ -132,90 +132,79 @@ function Computer() {
   };
 
   return (
-    <div className="min-h-screen bg-[#1a1a2e] flex flex-col">
-      <header className="bg-[#16213e] px-6 py-4 border-b-2 border-[#0f3460]">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl text-[#e94560] font-bold flex items-center gap-3">
+    <div className="min-h-screen bg-[var(--bg-primary)] flex flex-col">
+      {/* Header with dither pattern */}
+      <header className="relative bg-[var(--bg-secondary)] px-6 py-4 border-b-2 border-[var(--border-contrast)]">
+        <div className="absolute inset-0 dither-pattern opacity-30 pointer-events-none" />
+        <div className="relative flex items-center justify-between">
+          <h1 className="text-2xl text-[var(--accent-primary)] font-bold flex items-center gap-3">
             <img src="/favicon.svg" alt="LC-3b" className="w-8 h-8" />
             {wasmLoaded ? "LC-3b Simulator" : <span className="loading">LC-3b (loading...)</span>}
           </h1>
-          <nav className="flex gap-1">
-            <button
-              onClick={() => setActiveTab("simulator")}
-              className={`px-4 py-2 rounded-t-md font-medium transition-colors ${
-                activeTab === "simulator"
-                  ? "bg-[#1a1a2e] text-[#4ecca3]"
-                  : "text-[#888] hover:text-[#ccc]"
-              }`}
-            >
-              Simulator
-            </button>
-            <button
-              onClick={() => setActiveTab("instructions")}
-              className={`px-4 py-2 rounded-t-md font-medium transition-colors ${
-                activeTab === "instructions"
-                  ? "bg-[#1a1a2e] text-[#4ecca3]"
-                  : "text-[#888] hover:text-[#ccc]"
-              }`}
-            >
-              Instructions
-            </button>
-            <button
-              onClick={() => setActiveTab("samples")}
-              className={`px-4 py-2 rounded-t-md font-medium transition-colors ${
-                activeTab === "samples"
-                  ? "bg-[#1a1a2e] text-[#4ecca3]"
-                  : "text-[#888] hover:text-[#ccc]"
-              }`}
-            >
-              Samples
-            </button>
-            <button
-              onClick={() => setActiveTab("about")}
-              className={`px-4 py-2 rounded-t-md font-medium transition-colors ${
-                activeTab === "about"
-                  ? "bg-[#1a1a2e] text-[#4ecca3]"
-                  : "text-[#888] hover:text-[#ccc]"
-              }`}
-            >
-              About
-            </button>
-          </nav>
+          <div className="flex items-center gap-4">
+            <nav className="flex gap-1">
+              <button
+                onClick={() => setActiveTab("simulator")}
+                className={`tab-button px-4 py-2 ${activeTab === "simulator" ? "active" : ""}`}
+              >
+                Simulator
+              </button>
+              <button
+                onClick={() => setActiveTab("instructions")}
+                className={`tab-button px-4 py-2 ${activeTab === "instructions" ? "active" : ""}`}
+              >
+                Instructions
+              </button>
+              <button
+                onClick={() => setActiveTab("samples")}
+                className={`tab-button px-4 py-2 ${activeTab === "samples" ? "active" : ""}`}
+              >
+                Samples
+              </button>
+              <button
+                onClick={() => setActiveTab("about")}
+                className={`tab-button px-4 py-2 ${activeTab === "about" ? "active" : ""}`}
+              >
+                About
+              </button>
+            </nav>
+            <div className="border-l border-[var(--border-color)] pl-4">
+              <ThemeToggle />
+            </div>
+          </div>
         </div>
       </header>
 
       {activeTab === "simulator" ? (
         <div className="flex flex-1 h-[calc(100vh-68px)]">
           {/* Editor Panel */}
-          <div className="flex-1 flex flex-col p-6 bg-[#1a1a2e]">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm text-[#888] uppercase tracking-wide">
+          <div className="flex-1 flex flex-col p-6 bg-[var(--bg-primary)]">
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm text-[var(--text-muted)] uppercase tracking-wider font-semibold">
                 LC-3b Assembly
               </label>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <span
-                    className={`w-2 h-2 rounded-full ${
-                      programLoaded ? "bg-[#4ecca3]" : "bg-[#e94560]"
-                    }`}
+                    className={`status-dot ${programLoaded ? "ready" : "not-ready"}`}
                   />
                   <span
-                    className={`text-sm ${
-                      programLoaded ? "text-[#4ecca3]" : "text-[#888]"
+                    className={`text-sm font-medium ${
+                      programLoaded ? "text-[var(--accent-success)]" : "text-[var(--text-muted)]"
                     }`}
                   >
                     {programLoaded ? "Ready" : "Not Loaded"}
                   </span>
                 </div>
                 {programLoaded && (
-                  <span className="text-xs text-[#555]">
+                  <span className="text-xs text-[var(--text-muted)]">
                     {instructionCount} instruction{instructionCount !== 1 ? "s" : ""}
                   </span>
                 )}
               </div>
             </div>
             <textarea
-              className="h-48 min-h-[120px] max-h-[400px] bg-[#0f0f1a] border border-[#333] rounded-lg p-4 font-mono text-sm text-[#e0e0e0] resize-y leading-relaxed focus:outline-none focus:border-[#e94560] focus:ring-2 focus:ring-[#e94560]/20"
+              className="input-field h-48 min-h-[120px] max-h-[400px] rounded-lg p-4 font-mono text-sm resize-y leading-relaxed"
               value={assembly}
               onChange={(e) => {
                 setAssembly(e.target.value);
@@ -223,11 +212,11 @@ function Computer() {
                 setLoadError(null);
               }}
             />
-            <div className="flex gap-3 mt-4">
+            <div className="flex gap-4 mt-4">
               <button
                 onClick={handleLoadProgram}
                 disabled={!wasmLoaded}
-                className="px-6 py-3 bg-[#e94560] text-white font-semibold rounded-md hover:bg-[#d63850] hover:-translate-y-px transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary px-6 py-3 rounded-md"
               >
                 Load Program
               </button>
@@ -235,40 +224,43 @@ function Computer() {
                 onClick={handleNextInstruction}
                 disabled={!programLoaded}
                 title={!programLoaded ? "No program loaded" : undefined}
-                className="px-6 py-3 bg-[#0f3460] text-white font-semibold rounded-md hover:bg-[#1a4a7a] hover:-translate-y-px transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-secondary px-6 py-3 rounded-md"
               >
                 Execute Next Instruction
               </button>
             </div>
             {loadError && (
-              <div className="mt-4 p-4 bg-[#3d1a1a] border border-[#e94560] rounded-md">
-                <div className="text-[#e94560] font-semibold text-sm mb-1">Assembly Error</div>
-                <pre className="text-[#ff8a8a] text-sm font-mono whitespace-pre-wrap">{loadError}</pre>
+              <div className="mt-4 p-4 bg-[var(--accent-error)]/10 border-2 border-[var(--accent-error)] rounded-lg">
+                <div className="text-[var(--accent-error)] font-semibold text-sm mb-1">Assembly Error</div>
+                <pre className="text-[var(--accent-error)] text-sm font-mono whitespace-pre-wrap opacity-80">{loadError}</pre>
               </div>
             )}
           </div>
 
-          {/* Computer Panel - 25% wider (320px -> 400px) */}
-          <div className="w-[400px] bg-[#16213e] border-l-2 border-[#0f3460] p-6 overflow-y-auto">
-            <ProgramCounter programCounter={pc} />
-            <ConditionCodes n={conditions.n} z={conditions.z} p={conditions.p} />
-            <RegisterSet registers={registers} />
-            {programLoaded && (
-              <MemoryViewer programCounter={pc} readMemory={handleReadMemory} />
-            )}
-            <DebugLog />
+          {/* Computer Panel */}
+          <div className="w-[400px] relative bg-[var(--bg-secondary)] border-l-2 border-[var(--border-contrast)] p-6 overflow-y-auto">
+            <div className="absolute inset-0 dither-pattern opacity-20 pointer-events-none" />
+            <div className="relative">
+              <ProgramCounter programCounter={pc} />
+              <ConditionCodes n={conditions.n} z={conditions.z} p={conditions.p} />
+              <RegisterSet registers={registers} />
+              {programLoaded && (
+                <MemoryViewer programCounter={pc} readMemory={handleReadMemory} />
+              )}
+              <DebugLog />
+            </div>
           </div>
         </div>
       ) : activeTab === "instructions" ? (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto bg-[var(--bg-primary)]">
           <Instructions />
         </div>
       ) : activeTab === "samples" ? (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto bg-[var(--bg-primary)]">
           <SamplePrograms onLoadSample={handleLoadSample} />
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto bg-[var(--bg-primary)]">
           <About />
         </div>
       )}

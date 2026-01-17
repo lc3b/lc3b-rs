@@ -30,12 +30,12 @@ function RegisterSet({ registers }: RegisterSetProps) {
   return (
     <div className="mb-4">
       <div className="panel-title">Registers</div>
-      <div className="bg-[#0f0f1a] rounded-md p-2">
+      <div className="bg-[var(--bg-tertiary)] border-2 border-[var(--border-color)] rounded-lg p-2">
         <div className="grid grid-cols-4 gap-x-3 gap-y-1">
           {regs.map((reg) => (
             <div key={reg.name} className="flex items-center justify-between">
-              <span className="text-xs text-[#888]">{reg.name}</span>
-              <span className="font-mono text-xs text-[#4ecca3]">{formatHex(reg.value)}</span>
+              <span className="text-xs text-[var(--text-muted)]">{reg.name}</span>
+              <span className="font-mono text-xs text-[var(--accent-primary)]">{formatHex(reg.value)}</span>
             </div>
           ))}
         </div>

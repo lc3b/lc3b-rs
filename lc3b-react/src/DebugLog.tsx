@@ -49,15 +49,15 @@ function DebugLog({ externalEntries = [] }: DebugLogProps) {
       </summary>
       <div
         ref={logRef}
-        className="bg-[#0f0f1a] rounded-md p-3 font-mono text-xs text-[#888] max-h-[200px] overflow-y-auto mb-2"
+        className="bg-bg-primary rounded-md p-3 font-mono text-xs text-text-muted max-h-[200px] overflow-y-auto mb-2"
       >
         {allEntries.length === 0 ? (
-          <div className="text-[#555] italic">No log messages yet.</div>
+          <div className="text-text-muted italic">No log messages yet.</div>
         ) : (
           allEntries.map((entry, index) => (
             <div
               key={index}
-              className="py-1 border-b border-[#1a1a2e] last:border-b-0 break-all"
+              className="py-1 border-b border-bg-secondary last:border-b-0 break-all"
             >
               {entry}
             </div>
@@ -66,7 +66,7 @@ function DebugLog({ externalEntries = [] }: DebugLogProps) {
       </div>
       <button
         onClick={clearLog}
-        className="bg-transparent border border-[#333] text-[#888] px-3 py-1.5 rounded text-xs hover:border-[#e94560] hover:text-[#e94560] transition-all"
+        className="btn-secondary"
       >
         Clear
       </button>
