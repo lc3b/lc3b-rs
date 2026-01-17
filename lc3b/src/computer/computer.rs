@@ -1,4 +1,4 @@
-use lc3b_isa::{AddInstruction, AndInstruction, Condition, Instruction, Register};
+use lc3b_isa::{AddInstruction, AndInstruction, Condition, Instruction, PCOffset9, Register};
 use wasm_bindgen::prelude::*;
 
 use crate::{wasm::log, CallbacksRegistry, Memory, USER_PROGRAM_START};
@@ -114,7 +114,9 @@ impl Computer {
             Instruction::AndInstruction(and_instruction) => {
                 self.perform_and_instruction(and_instruction);
             }
-            Instruction::Br(condition, pcoffset9) => todo!(),
+            Instruction::Br(condition, pcoffset9) => {
+                self.perform_br_instruction(condition, pcoffset9);
+            }
             Instruction::Jmp(register) => todo!(),
             Instruction::Jsr(pcoffset11) => todo!(),
             Instruction::Jsrr(register) => todo!(),
@@ -209,5 +211,24 @@ impl Computer {
         let result = !value;
         self.store_register(dr, result);
         self.set_condition_codes(result);
+    }
+
+    pub fn perform_br_instruction(&mut self, condition: Condition, offset: PCOffset9) {
+        // Check if any of the specified condition flags match the current condition codes
+        let branch_taken = (condition.n && self.condition.n)
+            || (condition.z && self.condition.z)
+            || (condition.p && self.condition.p);
+
+        if branch_taken {
+            // The offset is relative to the incremented PC (PC+1)
+            // Since next_instruction will add 1 after execute, we compute:
+            // new_pc = (current_pc + 1) + offset - 1 = current_pc + offset
+            // Then after +1: final_pc = current_pc + offset + 1 = (PC+1) + offset
+            // Actually, we want final_pc = (PC+1) + offset
+            // So we set PC = (PC+1) + offset - 1 = PC + offset
+            let signed_offset = offset.sign_extend();
+            self.program_counter = (self.program_counter as i16).wrapping_add(signed_offset) as u16;
+        }
+        // If branch not taken, do nothing - next_instruction will increment PC by 1
     }
 }

@@ -2,7 +2,7 @@
 
 use std::{fmt::Debug, hash::Hash, str::FromStr};
 
-use lc3b_isa::{AddInstruction, Immediate5, Instruction, Register};
+use lc3b_isa::{AddInstruction, Condition, Immediate5, Instruction, PCOffset9, Register};
 use pest::{
     iterators::{Pair, Pairs},
     Parser,
@@ -50,6 +50,32 @@ pub fn parse_to_program(program: &str) -> eyre::Result<Vec<Instruction>> {
     Ok(instructions)
 }
 
+fn parse_br_condition(opcode: &str) -> Option<Condition> {
+    // Handle BR variants: BR, BRn, BRz, BRp, BRnz, BRnp, BRzp, BRnzp
+    let opcode_upper = opcode.to_uppercase();
+    if !opcode_upper.starts_with("BR") {
+        return None;
+    }
+
+    let suffix = &opcode_upper[2..];
+    
+    // Empty suffix means BRnzp (unconditional branch)
+    if suffix.is_empty() {
+        return Some(Condition { n: true, z: true, p: true });
+    }
+
+    let n = suffix.contains('N');
+    let z = suffix.contains('Z');
+    let p = suffix.contains('P');
+
+    // At least one condition must be set
+    if !n && !z && !p {
+        return None;
+    }
+
+    Some(Condition { n, z, p })
+}
+
 fn instruction_from_pair(pair: Pair<Rule>) -> eyre::Result<Instruction> {
     let mut inner = pair.into_inner();
     let opcode = inner.next();
@@ -57,8 +83,17 @@ fn instruction_from_pair(pair: Pair<Rule>) -> eyre::Result<Instruction> {
         return Err(eyre::eyre!("could not handle {:#?}", opcode));
     }
     let opcode = opcode.unwrap();
+    let opcode_str = opcode.as_str();
 
-    let instruction = match opcode.as_str() {
+    // Check for BR variants first
+    if let Some(condition) = parse_br_condition(opcode_str) {
+        let mut operands = inner.next().unwrap().into_inner();
+        let offset_arg = operands.next().unwrap();
+        let offset = PCOffset9::from_str(offset_arg.as_str())?;
+        return Ok(Instruction::Br(condition, offset));
+    }
+
+    let instruction = match opcode_str {
         "ADD" => {
             let mut operands = inner.next().unwrap().into_inner();
             let arg_one = operands.next().unwrap().as_str();

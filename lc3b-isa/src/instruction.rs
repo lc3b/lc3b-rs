@@ -398,7 +398,40 @@ pub struct Condition {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub struct PCOffset9(u16);
+pub struct PCOffset9(pub u16);
+
+impl PCOffset9 {
+    pub fn new(value: i16) -> Self {
+        // Store as 9-bit value (sign-extended when used)
+        PCOffset9((value as u16) & 0x1FF)
+    }
+
+    /// Sign-extend the 9-bit offset to 16 bits
+    pub fn sign_extend(&self) -> i16 {
+        if self.0 & 0x100 != 0 {
+            // Negative: sign-extend with 1s
+            (self.0 | 0xFE00) as i16
+        } else {
+            self.0 as i16
+        }
+    }
+}
+
+impl FromStr for PCOffset9 {
+    type Err = eyre::Report;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Strip optional # prefix
+        let s = s.strip_prefix('#').unwrap_or(s);
+        let value: i16 = s.parse()?;
+        // Check range: -256 to 255 (9-bit signed)
+        if value < -256 || value > 255 {
+            return Err(eyre::eyre!("PCOffset9 value {} out of range (-256 to 255)", value));
+        }
+        Ok(PCOffset9::new(value))
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct PCOffset11(u16);
 #[derive(Debug, PartialEq, Clone, Copy)]
