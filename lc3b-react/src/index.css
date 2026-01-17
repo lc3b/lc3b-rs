@@ -234,6 +234,22 @@ code {
     50% { opacity: 0.5; }
 }
 
+/* Register change animation */
+.register-changed {
+    animation: register-flash 0.6s ease-out;
+}
+
+@keyframes register-flash {
+    0% {
+        background-color: var(--accent-secondary);
+        opacity: 0.4;
+    }
+    100% {
+        background-color: transparent;
+        opacity: 1;
+    }
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
     width: 8px;
