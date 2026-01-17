@@ -25,7 +25,6 @@ import ProgramCounter from "./ProgramCounter";
 import ConditionCodes from "./ConditionCodes";
 import RegisterSet from "./RegisterSet";
 import MemoryViewer from "./MemoryViewer";
-import StatusSection from "./StatusSection";
 import DebugLog from "./DebugLog";
 import About from "./About";
 import Instructions from "./Instructions";
@@ -189,9 +188,32 @@ function Computer() {
         <div className="flex flex-1 h-[calc(100vh-68px)]">
           {/* Editor Panel */}
           <div className="flex-1 flex flex-col p-6 bg-[#1a1a2e]">
-            <label className="text-sm text-[#888] mb-2 uppercase tracking-wide">
-              LC-3b Assembly
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm text-[#888] uppercase tracking-wide">
+                LC-3b Assembly
+              </label>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      programLoaded ? "bg-[#4ecca3]" : "bg-[#e94560]"
+                    }`}
+                  />
+                  <span
+                    className={`text-sm ${
+                      programLoaded ? "text-[#4ecca3]" : "text-[#888]"
+                    }`}
+                  >
+                    {programLoaded ? "Ready" : "Not Loaded"}
+                  </span>
+                </div>
+                {programLoaded && (
+                  <span className="text-xs text-[#555]">
+                    {instructionCount} instruction{instructionCount !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
+            </div>
             <textarea
               className="h-48 min-h-[120px] max-h-[400px] bg-[#0f0f1a] border border-[#333] rounded-lg p-4 font-mono text-sm text-[#e0e0e0] resize-y leading-relaxed focus:outline-none focus:border-[#e94560] focus:ring-2 focus:ring-[#e94560]/20"
               value={assembly}
@@ -231,7 +253,6 @@ function Computer() {
             <ProgramCounter programCounter={pc} />
             <ConditionCodes n={conditions.n} z={conditions.z} p={conditions.p} />
             <RegisterSet registers={registers} />
-            <StatusSection isLoaded={programLoaded} instructionCount={instructionCount} />
             {programLoaded && (
               <MemoryViewer programCounter={pc} readMemory={handleReadMemory} />
             )}
