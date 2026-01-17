@@ -29,6 +29,7 @@ import MemoryViewer from "./MemoryViewer";
 import DebugLog from "./DebugLog";
 import About from "./About";
 import Instructions from "./Instructions";
+import Assembly from "./Assembly";
 import { SamplePrograms } from "./SamplePrograms";
 import { ThemeToggle } from "./ThemeContext";
 
@@ -40,7 +41,7 @@ ADD R3, R1, #5   ; R3 = R1 + 5
 ADD R4, R3, R1   ; R4 = R3 + R1
 `;
 
-type Tab = "simulator" | "instructions" | "samples" | "about";
+type Tab = "simulator" | "instructions" | "assembly" | "samples" | "about";
 
 function Computer() {
   const [activeTab, setActiveTab] = useState<Tab>("simulator");
@@ -163,6 +164,12 @@ function Computer() {
                 Instructions
               </button>
               <button
+                onClick={() => setActiveTab("assembly")}
+                className={`tab-button px-4 py-2 ${activeTab === "assembly" ? "active" : ""}`}
+              >
+                Assembly
+              </button>
+              <button
                 onClick={() => setActiveTab("samples")}
                 className={`tab-button px-4 py-2 ${activeTab === "samples" ? "active" : ""}`}
               >
@@ -261,6 +268,10 @@ function Computer() {
       ) : activeTab === "instructions" ? (
         <div className="flex-1 overflow-y-auto bg-[var(--bg-primary)]">
           <Instructions />
+        </div>
+      ) : activeTab === "assembly" ? (
+        <div className="flex-1 overflow-y-auto bg-[var(--bg-primary)]">
+          <Assembly />
         </div>
       ) : activeTab === "samples" ? (
         <div className="flex-1 overflow-y-auto bg-[var(--bg-primary)]">

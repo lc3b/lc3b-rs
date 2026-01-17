@@ -18,9 +18,19 @@ pub fn parse_to_pairs(program: &str) -> Result<Pairs<'_, Rule>, Box<Error>> {
     LC3BAsmParser::parse(Rule::program, program).map_err(Box::new)
 }
 
-/// Two-pass assembler that supports labels
+/// Result of assembling a program
+#[derive(Debug, Clone, PartialEq)]
+pub struct AssembledProgram {
+    /// Starting address specified by .ORIG (defaults to 0x3000)
+    pub origin: u16,
+    /// Raw 16-bit words (instructions and data)
+    pub words: Vec<u16>,
+}
+
+/// Two-pass assembler that supports labels and directives
 struct Assembler {
     symbols: HashMap<String, u16>,
+    origin: u16,
     current_address: u16,
 }
 
@@ -28,11 +38,12 @@ impl Assembler {
     fn new() -> Self {
         Assembler {
             symbols: HashMap::new(),
-            current_address: 0,
+            origin: 0x3000, // Default origin
+            current_address: 0x3000,
         }
     }
 
-    /// Pass 1: Build symbol table by collecting all label addresses
+    /// Pass 1: Build symbol table by collecting all label addresses and processing directives
     fn pass1(&mut self, program: &str) -> eyre::Result<()> {
         let parsed = LC3BAsmParser::parse(Rule::program, program)?
             .next()
@@ -42,37 +53,23 @@ impl Assembler {
             if pair.as_rule() == Rule::line {
                 for inner in pair.into_inner() {
                     match inner.as_rule() {
+                        Rule::directive_line => {
+                            self.pass1_directive_line(inner)?;
+                        }
                         Rule::label_only_line => {
-                            // Label on its own line
                             for part in inner.into_inner() {
                                 if part.as_rule() == Rule::label {
-                                    let label_name = self.extract_label_name(&part);
-                                    if self.symbols.contains_key(&label_name) {
-                                        return Err(eyre::eyre!(
-                                            "Duplicate label: {}",
-                                            label_name
-                                        ));
-                                    }
-                                    self.symbols.insert(label_name, self.current_address);
+                                    self.add_label(&part)?;
                                 }
                             }
                         }
                         Rule::instruction_line => {
-                            // Check for label and instruction
                             for part in inner.into_inner() {
                                 match part.as_rule() {
                                     Rule::label => {
-                                        let label_name = self.extract_label_name(&part);
-                                        if self.symbols.contains_key(&label_name) {
-                                            return Err(eyre::eyre!(
-                                                "Duplicate label: {}",
-                                                label_name
-                                            ));
-                                        }
-                                        self.symbols.insert(label_name, self.current_address);
+                                        self.add_label(&part)?;
                                     }
                                     Rule::instruction => {
-                                        // Each instruction takes one word
                                         self.current_address += 1;
                                     }
                                     _ => {}
@@ -88,43 +85,209 @@ impl Assembler {
         Ok(())
     }
 
-    /// Pass 2: Generate instructions, resolving label references
-    fn pass2(&mut self, program: &str) -> eyre::Result<Vec<Instruction>> {
+    fn pass1_directive_line(&mut self, pair: Pair<Rule>) -> eyre::Result<()> {
+        for part in pair.into_inner() {
+            match part.as_rule() {
+                Rule::label => {
+                    self.add_label(&part)?;
+                }
+                Rule::directive => {
+                    for directive in part.into_inner() {
+                        match directive.as_rule() {
+                            Rule::orig_directive => {
+                                let hex = directive.into_inner().next().unwrap();
+                                let addr = self.parse_hex_literal(&hex)?;
+                                self.origin = addr;
+                                self.current_address = addr;
+                            }
+                            Rule::end_directive => {
+                                // Stop processing
+                                return Ok(());
+                            }
+                            Rule::fill_directive => {
+                                self.current_address += 1;
+                            }
+                            Rule::blkw_directive => {
+                                let count = self.parse_directive_number(&directive)?;
+                                self.current_address += count;
+                            }
+                            Rule::stringz_directive => {
+                                let string_content = self.extract_string_content(&directive)?;
+                                // +1 for null terminator
+                                self.current_address += string_content.len() as u16 + 1;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+
+    /// Pass 2: Generate words, resolving label references
+    fn pass2(&mut self, program: &str) -> eyre::Result<Vec<u16>> {
         let parsed = LC3BAsmParser::parse(Rule::program, program)?
             .next()
             .unwrap();
 
-        self.current_address = 0;
-        let mut instructions = Vec::new();
+        self.current_address = self.origin;
+        let mut words = Vec::new();
 
         for pair in parsed.into_inner() {
             if pair.as_rule() == Rule::line {
                 for inner in pair.into_inner() {
-                    if inner.as_rule() == Rule::instruction_line {
-                        for part in inner.into_inner() {
-                            if part.as_rule() == Rule::instruction {
-                                let inst = self.instruction_from_pair(part)?;
-                                instructions.push(inst);
-                                self.current_address += 1;
+                    match inner.as_rule() {
+                        Rule::directive_line => {
+                            let directive_words = self.pass2_directive_line(inner)?;
+                            if directive_words.is_none() {
+                                // .END directive - stop processing
+                                return Ok(words);
+                            }
+                            words.extend(directive_words.unwrap());
+                        }
+                        Rule::instruction_line => {
+                            for part in inner.into_inner() {
+                                if part.as_rule() == Rule::instruction {
+                                    let inst = self.instruction_from_pair(part)?;
+                                    let word: u16 = (&inst).into();
+                                    words.push(word);
+                                    self.current_address += 1;
+                                }
                             }
                         }
+                        _ => {}
                     }
                 }
             }
         }
 
-        Ok(instructions)
+        Ok(words)
+    }
+
+    fn pass2_directive_line(&mut self, pair: Pair<Rule>) -> eyre::Result<Option<Vec<u16>>> {
+        let mut words = Vec::new();
+
+        for part in pair.into_inner() {
+            if part.as_rule() == Rule::directive {
+                for directive in part.into_inner() {
+                    match directive.as_rule() {
+                        Rule::orig_directive => {
+                            // Already handled in pass1, just update current_address
+                            let hex = directive.into_inner().next().unwrap();
+                            let addr = self.parse_hex_literal(&hex)?;
+                            self.current_address = addr;
+                        }
+                        Rule::end_directive => {
+                            return Ok(None);
+                        }
+                        Rule::fill_directive => {
+                            let value = self.parse_fill_value(&directive)?;
+                            words.push(value);
+                            self.current_address += 1;
+                        }
+                        Rule::blkw_directive => {
+                            let count = self.parse_directive_number(&directive)?;
+                            for _ in 0..count {
+                                words.push(0);
+                            }
+                            self.current_address += count;
+                        }
+                        Rule::stringz_directive => {
+                            let string_content = self.extract_string_content(&directive)?;
+                            for ch in string_content.chars() {
+                                words.push(ch as u16);
+                            }
+                            words.push(0); // Null terminator
+                            self.current_address += string_content.len() as u16 + 1;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        Ok(Some(words))
+    }
+
+    fn add_label(&mut self, pair: &Pair<Rule>) -> eyre::Result<()> {
+        let label_name = self.extract_label_name(pair);
+        if self.symbols.contains_key(&label_name) {
+            return Err(eyre::eyre!("Duplicate label: {}", label_name));
+        }
+        self.symbols.insert(label_name, self.current_address);
+        Ok(())
     }
 
     fn extract_label_name(&self, pair: &Pair<Rule>) -> String {
-        // Label rule contains identifier followed by ":"
         for inner in pair.clone().into_inner() {
             if inner.as_rule() == Rule::identifier {
                 return inner.as_str().to_string();
             }
         }
-        // Fallback: strip trailing colon and whitespace
         pair.as_str().trim().trim_end_matches(':').trim().to_string()
+    }
+
+    fn parse_hex_literal(&self, pair: &Pair<Rule>) -> eyre::Result<u16> {
+        let s = pair.as_str();
+        let hex_str = s.strip_prefix('x').or_else(|| s.strip_prefix('X')).unwrap_or(s);
+        u16::from_str_radix(hex_str, 16).map_err(|e| eyre::eyre!("Invalid hex literal '{}': {}", s, e))
+    }
+
+    fn parse_directive_number(&self, directive: &Pair<Rule>) -> eyre::Result<u16> {
+        for inner in directive.clone().into_inner() {
+            match inner.as_rule() {
+                Rule::hex_literal => {
+                    return self.parse_hex_literal(&inner);
+                }
+                Rule::literal => {
+                    let s = inner.as_str().strip_prefix('#').unwrap_or(inner.as_str());
+                    return s.parse::<u16>().map_err(|e| eyre::eyre!("Invalid number '{}': {}", s, e));
+                }
+                _ => {}
+            }
+        }
+        Err(eyre::eyre!("No number found in directive"))
+    }
+
+    fn parse_fill_value(&self, directive: &Pair<Rule>) -> eyre::Result<u16> {
+        for inner in directive.clone().into_inner() {
+            match inner.as_rule() {
+                Rule::hex_literal => {
+                    return self.parse_hex_literal(&inner);
+                }
+                Rule::literal => {
+                    let s = inner.as_str().strip_prefix('#').unwrap_or(inner.as_str());
+                    // Handle negative numbers
+                    let value: i16 = s.parse().map_err(|e| eyre::eyre!("Invalid number '{}': {}", s, e))?;
+                    return Ok(value as u16);
+                }
+                Rule::identifier => {
+                    // Label reference
+                    let label_name = inner.as_str();
+                    let addr = self.symbols.get(label_name).ok_or_else(|| {
+                        eyre::eyre!("Undefined label: {}", label_name)
+                    })?;
+                    return Ok(*addr);
+                }
+                _ => {}
+            }
+        }
+        Err(eyre::eyre!("No value found in .FILL directive"))
+    }
+
+    fn extract_string_content(&self, directive: &Pair<Rule>) -> eyre::Result<String> {
+        for inner in directive.clone().into_inner() {
+            if inner.as_rule() == Rule::string_literal {
+                for content in inner.into_inner() {
+                    if content.as_rule() == Rule::string_content {
+                        return Ok(content.as_str().to_string());
+                    }
+                }
+            }
+        }
+        Err(eyre::eyre!("No string content found in .STRINGZ directive"))
     }
 
     fn resolve_label_or_offset(&self, operand: &Pair<Rule>) -> eyre::Result<i16> {
@@ -132,6 +295,10 @@ impl Assembler {
             Rule::literal => {
                 let s = operand.as_str().strip_prefix('#').unwrap_or(operand.as_str());
                 Ok(s.parse()?)
+            }
+            Rule::hex_literal => {
+                let value = self.parse_hex_literal(operand)?;
+                Ok(value as i16)
             }
             Rule::identifier => {
                 let label_name = operand.as_str();
@@ -184,7 +351,7 @@ impl Assembler {
 
                 let arg_three = operands.next().unwrap();
                 let inner: AddInstruction = match arg_three.as_rule() {
-                    Rule::literal => {
+                    Rule::literal | Rule::hex_literal => {
                         let imm5 = Immediate5::from_str(arg_three.as_str())?;
                         AddInstruction::AddImm(dst_reg, src_reg, imm5)
                     }
@@ -206,7 +373,7 @@ impl Assembler {
 
                 let arg_three = operands.next().unwrap();
                 let inner: AndInstruction = match arg_three.as_rule() {
-                    Rule::literal => {
+                    Rule::literal | Rule::hex_literal => {
                         let imm5 = Immediate5::from_str(arg_three.as_str())?;
                         AndInstruction::AndImm(dst_reg, src_reg, imm5)
                     }
@@ -236,7 +403,6 @@ impl Assembler {
 }
 
 fn parse_br_condition(opcode: &str) -> Option<Condition> {
-    // Handle BR variants: BR, BRn, BRz, BRp, BRnz, BRnp, BRzp, BRnzp
     let opcode_upper = opcode.to_uppercase();
     if !opcode_upper.starts_with("BR") {
         return None;
@@ -244,7 +410,6 @@ fn parse_br_condition(opcode: &str) -> Option<Condition> {
 
     let suffix = &opcode_upper[2..];
 
-    // Empty suffix means BRnzp (unconditional branch)
     if suffix.is_empty() {
         return Some(Condition { n: true, z: true, p: true });
     }
@@ -253,7 +418,6 @@ fn parse_br_condition(opcode: &str) -> Option<Condition> {
     let z = suffix.contains('Z');
     let p = suffix.contains('P');
 
-    // At least one condition must be set
     if !n && !z && !p {
         return None;
     }
@@ -261,14 +425,30 @@ fn parse_br_condition(opcode: &str) -> Option<Condition> {
     Some(Condition { n, z, p })
 }
 
-pub fn parse_to_program(program: &str) -> eyre::Result<Vec<Instruction>> {
+/// Assemble a program and return the origin address and raw words
+pub fn assemble(program: &str) -> eyre::Result<AssembledProgram> {
     let mut assembler = Assembler::new();
     assembler.pass1(program)?;
-    assembler.pass2(program)
+    let words = assembler.pass2(program)?;
+    Ok(AssembledProgram {
+        origin: assembler.origin,
+        words,
+    })
+}
+
+/// Parse a program to instructions (legacy API, does not support directives)
+pub fn parse_to_program(program: &str) -> eyre::Result<Vec<Instruction>> {
+    let assembled = assemble(program)?;
+    // Convert words back to instructions
+    assembled.words
+        .iter()
+        .map(|&word| Instruction::try_from(word).map_err(|e| eyre::eyre!("Decode error: {:?}", e)))
+        .collect()
 }
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use lc3b_isa::{AddInstruction, Condition, Immediate5, Instruction, PCOffset9, Register};
 
     #[test]
@@ -278,7 +458,7 @@ mod test {
     ADD R1, R2, 10;
 "#;
 
-        let instructions = super::parse_to_program(test_asm).unwrap();
+        let instructions = parse_to_program(test_asm).unwrap();
         assert_eq!(
             instructions,
             [
@@ -305,11 +485,9 @@ skip:
     ADD R2, R2, #2
 "#;
 
-        let instructions = super::parse_to_program(test_asm).unwrap();
+        let instructions = parse_to_program(test_asm).unwrap();
         assert_eq!(instructions.len(), 3);
         
-        // BRz skip: from address 0, skip is at address 2
-        // offset = 2 - (0 + 1) = 1
         assert_eq!(
             instructions[0],
             Instruction::Br(
@@ -327,11 +505,9 @@ loop:
     BRp loop
 "#;
 
-        let instructions = super::parse_to_program(test_asm).unwrap();
+        let instructions = parse_to_program(test_asm).unwrap();
         assert_eq!(instructions.len(), 2);
         
-        // BRp loop: from address 1, loop is at address 0
-        // offset = 0 - (1 + 1) = -2
         assert_eq!(
             instructions[1],
             Instruction::Br(
@@ -350,7 +526,7 @@ label:
     ADD R1, R1, #1
 "#;
 
-        let result = super::parse_to_program(test_asm);
+        let result = parse_to_program(test_asm);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("Duplicate label"));
     }
@@ -361,10 +537,9 @@ label:
     BRz undefined_label
 "#;
 
-        let result = super::parse_to_program(test_asm);
+        let result = parse_to_program(test_asm);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("Undefined label"));
     }
+
 }
-
-

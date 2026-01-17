@@ -6,7 +6,48 @@ program = {
 }
 
 line = {
-    ws* ~ (instruction_line | label_only_line | comment_line | empty_line)
+    ws* ~ (directive_line | instruction_line | label_only_line | comment_line | empty_line)
+}
+
+// Assembler directive (e.g., .ORIG, .FILL, .END)
+directive_line = {
+    (label ~ ws*)? ~ directive ~ ws* ~ (";" ~ ws* ~ comment)?
+}
+
+directive = {
+    orig_directive | end_directive | fill_directive | blkw_directive | stringz_directive
+}
+
+orig_directive = {
+    ^".ORIG" ~ ws+ ~ hex_literal
+}
+
+end_directive = {
+    ^".END"
+}
+
+fill_directive = {
+    ^".FILL" ~ ws+ ~ (hex_literal | literal | identifier)
+}
+
+blkw_directive = {
+    ^".BLKW" ~ ws+ ~ (hex_literal | literal)
+}
+
+stringz_directive = {
+    ^".STRINGZ" ~ ws+ ~ string_literal
+}
+
+string_literal = {
+    "\"" ~ string_content ~ "\""
+}
+
+string_content = {
+    (!("\"" | NEWLINE) ~ ANY)*
+}
+
+hex_literal = {
+    ("x" | "X") ~ ASCII_HEX_DIGIT+
 }
 
 // Label on its own line (no instruction)
@@ -40,7 +81,7 @@ opcode = {
 }
 
 operands = {
-    ((register | literal | identifier) ~ ws* ~ ","? ~ ws*)+
+    ((register | hex_literal | literal | identifier) ~ ws* ~ ","? ~ ws*)+
 }
 
 comment = {
