@@ -190,7 +190,7 @@ impl Assembler {
                     }
                     Rule::register => {
                         let src2_reg = Register::from_str(arg_three.as_str())?;
-                        AddInstruction::AddReg(src_reg, dst_reg, src2_reg)
+                        AddInstruction::AddReg(dst_reg, src_reg, src2_reg)
                     }
                     _ => return Err(eyre::eyre!("unhandled `{:?}`", arg_three)),
                 };
@@ -212,7 +212,7 @@ impl Assembler {
                     }
                     Rule::register => {
                         let src2_reg = Register::from_str(arg_three.as_str())?;
-                        AndInstruction::AndReg(src_reg, dst_reg, src2_reg)
+                        AndInstruction::AndReg(dst_reg, src_reg, src2_reg)
                     }
                     _ => return Err(eyre::eyre!("unhandled `{:?}`", arg_three)),
                 };
