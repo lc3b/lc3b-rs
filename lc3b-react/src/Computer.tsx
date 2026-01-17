@@ -232,7 +232,7 @@ function Computer() {
                 disabled={!wasmLoaded}
                 className="btn-primary px-6 py-3 rounded-md"
               >
-                Load Program
+                Assemble and Load to Memory
               </button>
               <button
                 onClick={handleNextInstruction}
