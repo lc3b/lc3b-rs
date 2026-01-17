@@ -144,6 +144,140 @@ function About() {
         </div>
       </section>
 
+      <section className="mb-8">
+        <h2 className="text-xl font-semibold text-[#4ecca3] mb-3">Architecture</h2>
+        <div className="bg-[#0f0f1a] rounded-lg p-6 font-mono text-sm overflow-x-auto">
+          <pre className="text-[#ccc] leading-relaxed whitespace-pre">{`
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              Web Browser                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                         React Application                             │  │
+│  │                                                                       │  │
+│  │   ┌─────────────┐    ┌─────────────┐    ┌─────────────────────────┐   │  │
+│  │   │ Computer.tsx│    │RegisterSet  │    │    MemoryViewer.tsx     │   │  │
+│  │   │             │    │    .tsx     │    │                         │   │  │
+│  │   │ - assembly  │    │             │    │  Decodes instructions   │   │  │
+│  │   │ - pc        │    │ - r0..r7    │    │  from memory words      │   │  │
+│  │   │ - registers │    │ - expanded  │    │                         │   │  │
+│  │   │ - conditions│    │             │    │                         │   │  │
+│  │   └──────┬──────┘    └─────────────┘    └─────────────────────────┘   │  │
+│  │          │ useState / useRef                                          │  │
+│  └──────────┼────────────────────────────────────────────────────────────┘  │
+│             │                                                               │
+│             │ computerRef.current (WASM object reference)                   │
+│             ▼                                                               │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │                      WASM Binding Layer                              │   │
+│  │                        (wasm/mod.rs)                                 │   │
+│  │                                                                      │   │
+│  │   JavaScript API              Rust Implementation                    │   │
+│  │   ──────────────              ───────────────────                    │   │
+│  │   new_computer(asm)     ───►  Program::from_assembly()               │   │
+│  │                               Computer::new()                        │   │
+│  │                               computer.load_program()                │   │
+│  │                                                                      │   │
+│  │   next_instruction(cpu) ───►  computer.next_instruction()            │   │
+│  │                                                                      │   │
+│  │   program_counter(cpu)  ◄───  computer.program_counter()             │   │
+│  │   register0..7(cpu)     ◄───  computer.register0..7()                │   │
+│  │   condition_n/z/p(cpu)  ◄───  computer.condition_n/z/p()             │   │
+│  │   read_memory(cpu,addr) ◄───  computer.read_memory(addr)             │   │
+│  │                                                                      │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│             │                                                               │
+│             │ Compiled to WebAssembly (.wasm)                               │
+│             ▼                                                               │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │                        Rust Core Library                             │   │
+│  │                                                                      │   │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────────┐  │   │
+│  │  │   lc3b-isa   │  │lc3b-assembler│  │          lc3b              │  │   │
+│  │  │              │  │              │  │                            │  │   │
+│  │  │ Instruction  │  │  Assembler   │  │  ┌──────────────────────┐  │  │   │
+│  │  │ Register     │◄─┤  (2-pass)    │  │  │      Computer        │  │  │   │
+│  │  │ Condition    │  │              │  │  │                      │  │  │   │
+│  │  │ PCOffset9    │  │  - pass1:    │  │  │  - program_counter   │  │  │   │
+│  │  │ Immediate5   │  │    symbols   │  │  │  - registers[8]      │  │  │   │
+│  │  │              │  │  - pass2:    │  │  │  - condition (N/Z/P) │  │  │   │
+│  │  │ Encode/Decode│  │    codegen   │  │  │  - memory[64KB]      │  │  │   │
+│  │  │ u16 <-> Inst │  │              │  │  │                      │  │  │   │
+│  │  └──────────────┘  └──────────────┘  │  │  execute(Instruction)│  │  │   │
+│  │                                      │  └──────────────────────┘  │  │   │
+│  │                                      └────────────────────────────┘  │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+                            Data Flow: Load & Execute
+                            ─────────────────────────
+
+  1. User writes assembly  ──►  textarea (Computer.tsx state: assembly)
+                                     │
+  2. Click "Load Program"  ──►  new_computer(assembly, callbacks)
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  Program::from_      │
+                          │    assembly()        │
+                          │  ────────────────    │
+                          │  Parse → Instruction │
+                          │  Instruction → u16   │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  Computer::new()     │
+                          │  load_program(words) │
+                          │  ────────────────    │
+                          │  Words → Memory      │
+                          │  PC = 0x3000         │
+                          └──────────┬───────────┘
+                                     │
+                          ComputerResult (Ok/Err)
+                                     │
+                                     ▼
+                          computerRef.current = computer
+                          setProgramLoaded(true)
+                          updateState()
+
+  3. Click "Execute"       ──►  next_instruction(computerRef.current)
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │ fetch_instruction()  │
+                          │ ──────────────────── │
+                          │ memory[PC] → u16     │
+                          │ u16 → Instruction    │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │ execute(instruction) │
+                          │ ──────────────────── │
+                          │ ADD: reg + reg → reg │
+                          │ BR:  check cond, PC  │
+                          │ etc.                 │
+                          │ set_condition_codes()│
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │    updateState()     │
+                          │ ──────────────────── │
+                          │ program_counter(cpu) │
+                          │ register0..7(cpu)    │
+                          │ condition_n/z/p(cpu) │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                          React setState() triggers re-render
+                          UI displays new PC, registers, flags
+`}</pre>
+        </div>
+      </section>
+
       <section className="text-center text-[#666] text-sm">
         <p>Made with Rust, React, and WebAssembly</p>
       </section>
