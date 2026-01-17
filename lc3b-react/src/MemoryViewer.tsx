@@ -184,8 +184,9 @@ function decodeInstruction(word: number): DecodedInstruction {
   switch (op) {
     case 0b0000: { // BR
       const cond = (n ? "n" : "") + (z ? "z" : "") + (p ? "p" : "");
+      const brName = cond ? `BR${cond}` : "BRnzp";
       return {
-        opcode: "BR",
+        opcode: brName,
         variant: `Br(${cond || "nzp"})`,
         operands: `${offset9Signed}`,
         comment: `Branch${cond ? ` if ${cond}` : ""} to PC + ${offset9Signed * 2}`,
