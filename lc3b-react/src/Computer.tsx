@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import init, {
   WasmCallbacksRegistry,
   Computer as WasmComputer,
+  ComputerResult,
   new_computer,
   next_instruction,
   program_counter,
@@ -28,6 +29,7 @@ import StatusSection from "./StatusSection";
 import DebugLog from "./DebugLog";
 import About from "./About";
 import Instructions from "./Instructions";
+import { SamplePrograms } from "./SamplePrograms";
 
 const DEFAULT_ASSEMBLY = `; LC-3b Assembly Program
 ; Example: Add registers
@@ -37,13 +39,14 @@ ADD R3, R1, #5   ; R3 = R1 + 5
 ADD R4, R3, R1   ; R4 = R3 + R1
 `;
 
-type Tab = "simulator" | "instructions" | "about";
+type Tab = "simulator" | "instructions" | "samples" | "about";
 
 function Computer() {
   const [activeTab, setActiveTab] = useState<Tab>("simulator");
   const [assembly, setAssembly] = useState(DEFAULT_ASSEMBLY);
   const [wasmLoaded, setWasmLoaded] = useState(false);
   const [programLoaded, setProgramLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [instructionCount, setInstructionCount] = useState(0);
   const [pc, setPc] = useState(0);
   const [conditions, setConditions] = useState({ n: false, z: false, p: false });
@@ -90,7 +93,18 @@ function Computer() {
   const handleLoadProgram = () => {
     // Callback must not access computer while it's borrowed by next_instruction
     const callbacks = WasmCallbacksRegistry.new(() => {});
-    computerRef.current = new_computer(assembly, callbacks);
+    const result: ComputerResult = new_computer(assembly, callbacks);
+    
+    if (result.is_err()) {
+      const errorMsg = result.error_message();
+      setLoadError(errorMsg ?? "Unknown error");
+      setProgramLoaded(false);
+      computerRef.current = null;
+      return;
+    }
+    
+    computerRef.current = result.unwrap_computer();
+    setLoadError(null);
     setInstructionCount(0);
     setProgramLoaded(true);
     updateState();
@@ -109,6 +123,13 @@ function Computer() {
       return read_memory(computerRef.current, addr);
     }
     return 0;
+  };
+
+  const handleLoadSample = (code: string) => {
+    setAssembly(code);
+    setProgramLoaded(false);
+    setLoadError(null);
+    setActiveTab("simulator");
   };
 
   return (
@@ -141,6 +162,16 @@ function Computer() {
               Instructions
             </button>
             <button
+              onClick={() => setActiveTab("samples")}
+              className={`px-4 py-2 rounded-t-md font-medium transition-colors ${
+                activeTab === "samples"
+                  ? "bg-[#1a1a2e] text-[#4ecca3]"
+                  : "text-[#888] hover:text-[#ccc]"
+              }`}
+            >
+              Samples
+            </button>
+            <button
               onClick={() => setActiveTab("about")}
               className={`px-4 py-2 rounded-t-md font-medium transition-colors ${
                 activeTab === "about"
@@ -167,6 +198,7 @@ function Computer() {
               onChange={(e) => {
                 setAssembly(e.target.value);
                 setProgramLoaded(false);
+                setLoadError(null);
               }}
             />
             <div className="flex gap-3 mt-4">
@@ -186,6 +218,12 @@ function Computer() {
                 Execute Next Instruction
               </button>
             </div>
+            {loadError && (
+              <div className="mt-4 p-4 bg-[#3d1a1a] border border-[#e94560] rounded-md">
+                <div className="text-[#e94560] font-semibold text-sm mb-1">Assembly Error</div>
+                <pre className="text-[#ff8a8a] text-sm font-mono whitespace-pre-wrap">{loadError}</pre>
+              </div>
+            )}
           </div>
 
           {/* Computer Panel - 25% wider (320px -> 400px) */}
@@ -203,6 +241,10 @@ function Computer() {
       ) : activeTab === "instructions" ? (
         <div className="flex-1 overflow-y-auto">
           <Instructions />
+        </div>
+      ) : activeTab === "samples" ? (
+        <div className="flex-1 overflow-y-auto">
+          <SamplePrograms onLoadSample={handleLoadSample} />
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto">

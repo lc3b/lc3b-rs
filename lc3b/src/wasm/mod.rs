@@ -33,18 +33,57 @@ impl WasmCallbacksRegistry {
     }
 }
 
+/// Result type for computer creation - wraps either a Computer or an error message
 #[wasm_bindgen]
-pub fn new_computer(program: &str, callbacks: WasmCallbacksRegistry) -> Computer {
-    let program = Program::from_assembly(program).unwrap();
-    let words = program.to_words();
+pub struct ComputerResult {
+    computer: Option<Computer>,
+    error: Option<String>,
+}
+
+#[wasm_bindgen]
+impl ComputerResult {
+    pub fn is_ok(&self) -> bool {
+        self.computer.is_some()
+    }
     
-    let callbacks = CallbacksRegistry {
-        hello: Callback::JS(callbacks.hello),
-    };
+    pub fn is_err(&self) -> bool {
+        self.error.is_some()
+    }
     
-    let mut computer = Computer::new(callbacks);
-    computer.load_program(&words, USER_PROGRAM_START);
-    computer
+    pub fn error_message(&self) -> Option<String> {
+        self.error.clone()
+    }
+    
+    pub fn unwrap_computer(self) -> Computer {
+        self.computer.expect("Called unwrap_computer on an error result")
+    }
+}
+
+#[wasm_bindgen]
+pub fn new_computer(program: &str, callbacks: WasmCallbacksRegistry) -> ComputerResult {
+    match Program::from_assembly(program) {
+        Ok(program) => {
+            let words = program.to_words();
+            
+            let callbacks = CallbacksRegistry {
+                hello: Callback::JS(callbacks.hello),
+            };
+            
+            let mut computer = Computer::new(callbacks);
+            computer.load_program(&words, USER_PROGRAM_START);
+            
+            ComputerResult {
+                computer: Some(computer),
+                error: None,
+            }
+        }
+        Err(e) => {
+            ComputerResult {
+                computer: None,
+                error: Some(format!("{:?}", e)),
+            }
+        }
+    }
 }
 
 #[wasm_bindgen]
