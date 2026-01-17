@@ -34,7 +34,7 @@ export function SamplePrograms({ onLoadSample }: SampleProgramsProps) {
 
               <button
                 onClick={() => onLoadSample(sample.code)}
-                className="btn-primary"
+                className="btn-primary px-5 py-2.5"
               >
                 Try this program
               </button>
