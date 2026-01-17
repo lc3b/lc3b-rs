@@ -397,23 +397,17 @@ function BinaryBreakdown({ word }: BinaryBreakdownProps) {
       <div className="text-text-muted mb-1">Encoding:</div>
       <div className="flex font-mono text-sm">
         {segments.map((seg, i) => (
-          <span
-            key={i}
-            className={`px-0.5 ${seg.colorClass}`}
-            title={seg.label}
-          >
-            {seg.bits}
-          </span>
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[10px]">
-        {segments.map((seg, i) => (
-          <span key={i} className="flex items-center gap-1">
+          <div key={i} className="flex flex-col items-center">
+            <span className={seg.colorClass}>
+              {seg.bits}
+            </span>
             <span
-              className={`w-2 h-2 rounded-sm ${seg.colorClass.replace('text-', 'bg-')}`}
-            />
-            <span className="text-text-muted">{seg.label}</span>
-          </span>
+              className="text-[9px] text-text-muted mt-0.5 truncate"
+              style={{ maxWidth: `${seg.bits.length * 0.6}em` }}
+            >
+              {seg.label}
+            </span>
+          </div>
         ))}
       </div>
     </div>
