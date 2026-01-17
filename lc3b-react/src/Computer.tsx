@@ -19,6 +19,7 @@ import init, {
   condition_n,
   condition_z,
   condition_p,
+  last_modified_register,
 } from "lc3b";
 
 import ProgramCounter from "./ProgramCounter";
@@ -60,6 +61,7 @@ function Computer() {
     r6: 0,
     r7: 0,
   });
+  const [modifiedRegister, setModifiedRegister] = useState<number | null>(null);
 
   const computerRef = useRef<WasmComputer | null>(null);
 
@@ -113,6 +115,11 @@ function Computer() {
     if (computerRef.current) {
       next_instruction(computerRef.current);
       setInstructionCount((prev) => prev + 1);
+      
+      // Get the last modified register before updating state
+      const modReg = last_modified_register(computerRef.current);
+      setModifiedRegister(modReg >= 0 ? modReg : null);
+      
       updateState();
     }
   };
@@ -243,7 +250,7 @@ function Computer() {
             <div className="relative">
               <ProgramCounter programCounter={pc} />
               <ConditionCodes n={conditions.n} z={conditions.z} p={conditions.p} />
-              <RegisterSet registers={registers} />
+              <RegisterSet registers={registers} modifiedRegister={modifiedRegister} />
               {programLoaded && (
                 <MemoryViewer programCounter={pc} readMemory={handleReadMemory} />
               )}

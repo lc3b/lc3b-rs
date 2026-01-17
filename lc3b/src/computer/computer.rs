@@ -11,6 +11,8 @@ pub struct Computer {
     callbacks: CallbacksRegistry,
     registers: [u16; 8],
     memory: Memory,
+    /// Tracks which register was modified by the last instruction (0-7), or None
+    last_modified_register: Option<u8>,
 }
 
 impl Computer {
@@ -21,6 +23,7 @@ impl Computer {
             callbacks,
             registers: [0u16; 8],
             memory: Memory::default(),
+            last_modified_register: None,
         }
     }
 
@@ -31,6 +34,9 @@ impl Computer {
     }
 
     pub fn next_instruction(&mut self) {
+        // Clear last modified register before executing new instruction
+        self.last_modified_register = None;
+
         let instruction = self.fetch_instruction();
 
         match instruction {
@@ -94,6 +100,11 @@ impl Computer {
         self.condition.p
     }
 
+    /// Returns the index (0-7) of the register modified by the last instruction, if any
+    pub fn last_modified_register(&self) -> Option<u8> {
+        self.last_modified_register
+    }
+
     /// Read a word from memory
     pub fn read_memory(&self, addr: u16) -> u16 {
         self.memory.read_word(addr)
@@ -145,6 +156,7 @@ impl Computer {
     pub fn store_register(&mut self, register: Register, value: u16) {
         let index = register.to_index();
         self.registers[index] = value;
+        self.last_modified_register = Some(index as u8);
     }
 
     /// Update condition codes based on a value (typically the result stored in DR)

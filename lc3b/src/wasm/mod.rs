@@ -155,3 +155,10 @@ pub fn condition_z(computer: &Computer) -> bool {
 pub fn condition_p(computer: &Computer) -> bool {
     computer.condition_p()
 }
+
+/// Returns the index (0-7) of the register modified by the last instruction,
+/// or -1 if no register was modified
+#[wasm_bindgen]
+pub fn last_modified_register(computer: &Computer) -> i8 {
+    computer.last_modified_register().map(|r| r as i8).unwrap_or(-1)
+}

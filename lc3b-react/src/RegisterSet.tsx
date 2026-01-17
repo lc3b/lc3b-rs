@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 export interface RegisterSetProps {
   registers: {
@@ -11,57 +11,39 @@ export interface RegisterSetProps {
     r6: number;
     r7: number;
   };
+  modifiedRegister: number | null;
 }
 
 function formatHex(value: number): string {
   return "0x" + value.toString(16).toUpperCase().padStart(4, "0");
 }
 
-function RegisterSet({ registers }: RegisterSetProps) {
-  const prevRegisters = useRef(registers);
-  const [changedRegs, setChangedRegs] = useState<Set<string>>(new Set());
+function RegisterSet({ registers, modifiedRegister }: RegisterSetProps) {
+  const [animatingReg, setAnimatingReg] = useState<number | null>(null);
 
   const regs = [
-    { name: "R0", value: registers.r0 },
-    { name: "R1", value: registers.r1 },
-    { name: "R2", value: registers.r2 },
-    { name: "R3", value: registers.r3 },
-    { name: "R4", value: registers.r4 },
-    { name: "R5", value: registers.r5 },
-    { name: "R6", value: registers.r6 },
-    { name: "R7", value: registers.r7 },
+    { name: "R0", value: registers.r0, index: 0 },
+    { name: "R1", value: registers.r1, index: 1 },
+    { name: "R2", value: registers.r2, index: 2 },
+    { name: "R3", value: registers.r3, index: 3 },
+    { name: "R4", value: registers.r4, index: 4 },
+    { name: "R5", value: registers.r5, index: 5 },
+    { name: "R6", value: registers.r6, index: 6 },
+    { name: "R7", value: registers.r7, index: 7 },
   ];
 
   useEffect(() => {
-    const changed = new Set<string>();
-    
-    if (prevRegisters.current.r0 !== registers.r0) changed.add("R0");
-    if (prevRegisters.current.r1 !== registers.r1) changed.add("R1");
-    if (prevRegisters.current.r2 !== registers.r2) changed.add("R2");
-    if (prevRegisters.current.r3 !== registers.r3) changed.add("R3");
-    if (prevRegisters.current.r4 !== registers.r4) changed.add("R4");
-    if (prevRegisters.current.r5 !== registers.r5) changed.add("R5");
-    if (prevRegisters.current.r6 !== registers.r6) changed.add("R6");
-    if (prevRegisters.current.r7 !== registers.r7) changed.add("R7");
-
-    if (changed.size > 0) {
-      setChangedRegs(changed);
+    if (modifiedRegister !== null) {
+      setAnimatingReg(modifiedRegister);
       
       // Clear the animation after it completes
       const timer = setTimeout(() => {
-        setChangedRegs(new Set());
+        setAnimatingReg(null);
       }, 600);
 
       return () => clearTimeout(timer);
     }
-
-    prevRegisters.current = registers;
-  }, [registers]);
-
-  // Update ref after comparison
-  useEffect(() => {
-    prevRegisters.current = registers;
-  });
+  }, [modifiedRegister, registers]);
 
   return (
     <div className="mb-4">
@@ -72,7 +54,7 @@ function RegisterSet({ registers }: RegisterSetProps) {
             <div
               key={reg.name}
               className={`flex items-center justify-between px-1 rounded transition-colors duration-500 ${
-                changedRegs.has(reg.name) ? "register-changed" : ""
+                animatingReg === reg.index ? "register-changed" : ""
               }`}
             >
               <span className="text-xs text-[var(--text-muted)]">{reg.name}</span>
