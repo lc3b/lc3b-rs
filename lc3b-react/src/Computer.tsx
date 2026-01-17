@@ -115,7 +115,8 @@ function Computer() {
     <div className="min-h-screen bg-[#1a1a2e] flex flex-col">
       <header className="bg-[#16213e] px-6 py-4 border-b-2 border-[#0f3460]">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl text-[#e94560] font-bold">
+          <h1 className="text-2xl text-[#e94560] font-bold flex items-center gap-3">
+            <img src="/favicon.svg" alt="LC-3b" className="w-8 h-8" />
             {wasmLoaded ? "LC-3b Simulator" : <span className="loading">LC-3b (loading...)</span>}
           </h1>
           <nav className="flex gap-1">
