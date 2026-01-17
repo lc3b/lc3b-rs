@@ -32,7 +32,6 @@ impl Computer {
 
     pub fn next_instruction(&mut self) {
         let instruction = self.fetch_instruction();
-        log(&format!("PC={:#06X} instruction: {:?}", self.program_counter, instruction));
 
         match instruction {
             Ok(inst) => {
@@ -111,13 +110,9 @@ impl Computer {
         match instruction {
             Instruction::AddInstruction(add_instruction) => {
                 self.perform_add_instruction(add_instruction);
-                log("add instruction done");
-                log(&format!("registers: {:#?}", self.registers));
             }
             Instruction::AndInstruction(and_instruction) => {
                 self.perform_and_instruction(and_instruction);
-                log("and instruction done");
-                log(&format!("registers: {:#?}", self.registers));
             }
             Instruction::Br(condition, pcoffset9) => todo!(),
             Instruction::Jmp(register) => todo!(),
@@ -128,12 +123,7 @@ impl Computer {
             Instruction::Ldr(register, register1, pcoffset6) => todo!(),
             Instruction::Lea(register, pcoffset9) => todo!(),
             Instruction::Not(dr, sr) => {
-                let value = self.load_register(sr);
-                let result = !value;
-                self.store_register(dr, result);
-                self.set_condition_codes(result);
-                log("not instruction done");
-                log(&format!("registers: {:#?}", self.registers));
+                self.perform_not_instruction(dr, sr);
             }
             Instruction::Ret => todo!(),
             Instruction::Rti => todo!(),
@@ -212,5 +202,12 @@ impl Computer {
                 self.set_condition_codes(result);
             }
         }
+    }
+
+    pub fn perform_not_instruction(&mut self, dr: Register, sr: Register) {
+        let value = self.load_register(sr);
+        let result = !value;
+        self.store_register(dr, result);
+        self.set_condition_codes(result);
     }
 }
