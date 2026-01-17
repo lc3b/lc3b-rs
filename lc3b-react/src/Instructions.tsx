@@ -1,3 +1,5 @@
+import { useRef } from "react";
+
 interface InstructionInfo {
   name: string;
   variants: {
@@ -273,6 +275,14 @@ const instructions: InstructionInfo[] = [
 
 function Instructions() {
   const supportedCount = instructions.filter((i) => i.supported).length;
+  const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+  const scrollToInstruction = (name: string) => {
+    const ref = sectionRefs.current[name];
+    if (ref) {
+      ref.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -281,11 +291,35 @@ function Instructions() {
         {supportedCount} of {instructions.length} instructions implemented
       </p>
 
+      {/* Quick Reference Index */}
+      <div className="mb-8 p-4 bg-bg-tertiary rounded-lg border-2 border-border-color">
+        <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-3">Quick Reference</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1 font-mono text-sm">
+          {instructions.flatMap((inst) =>
+            inst.variants.map((variant) => (
+              <button
+                key={`${inst.name}-${variant.name}`}
+                onClick={() => scrollToInstruction(inst.name)}
+                className={`text-left px-2 py-1 rounded hover:bg-bg-secondary transition-colors ${
+                  inst.supported ? "text-accent-primary" : "text-text-muted"
+                }`}
+              >
+                <span className="font-semibold">{variant.syntax.split(" ")[0]}</span>
+                <span className="text-text-muted text-xs ml-1">
+                  {variant.syntax.split(" ").slice(1).join(" ")}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+
       <div className="space-y-6">
         {instructions.map((inst) => (
           <div
             key={inst.name}
-            className={`bg-bg-tertiary rounded-lg p-4 border-l-4 ${
+            ref={(el) => (sectionRefs.current[inst.name] = el)}
+            className={`bg-bg-tertiary rounded-lg p-4 border-l-4 scroll-mt-4 ${
               inst.supported ? "border-accent-secondary" : "border-border-color"
             }`}
           >
