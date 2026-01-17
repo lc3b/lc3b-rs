@@ -1,4 +1,4 @@
-use lc3b_isa::{AddInstruction, Condition, Instruction, Register};
+use lc3b_isa::{AddInstruction, AndInstruction, Condition, Instruction, Register};
 use wasm_bindgen::prelude::*;
 
 use crate::{wasm::log, CallbacksRegistry, Memory, USER_PROGRAM_START};
@@ -114,7 +114,11 @@ impl Computer {
                 log("add instruction done");
                 log(&format!("registers: {:#?}", self.registers));
             }
-            Instruction::AndInstruction(and_instruction) => todo!(),
+            Instruction::AndInstruction(and_instruction) => {
+                self.perform_and_instruction(and_instruction);
+                log("and instruction done");
+                log(&format!("registers: {:#?}", self.registers));
+            }
             Instruction::Br(condition, pcoffset9) => todo!(),
             Instruction::Jmp(register) => todo!(),
             Instruction::Jsr(pcoffset11) => todo!(),
@@ -123,7 +127,14 @@ impl Computer {
             Instruction::Ldi(register, register1, pcoffset6) => todo!(),
             Instruction::Ldr(register, register1, pcoffset6) => todo!(),
             Instruction::Lea(register, pcoffset9) => todo!(),
-            Instruction::Not(register, register1) => todo!(),
+            Instruction::Not(dr, sr) => {
+                let value = self.load_register(sr);
+                let result = !value;
+                self.store_register(dr, result);
+                self.set_condition_codes(result);
+                log("not instruction done");
+                log(&format!("registers: {:#?}", self.registers));
+            }
             Instruction::Ret => todo!(),
             Instruction::Rti => todo!(),
             Instruction::Shf(register, register1, bit, bit1, immediate4) => todo!(),
@@ -172,6 +183,31 @@ impl Computer {
                     imm5 as u16
                 };
                 let result = value1.wrapping_add(value2);
+                self.store_register(dr, result);
+                self.set_condition_codes(result);
+            }
+        }
+    }
+
+    pub fn perform_and_instruction(&mut self, and_instruction: AndInstruction) {
+        match and_instruction {
+            AndInstruction::AndReg(dr, sr1, sr2) => {
+                let value1 = self.load_register(sr1);
+                let value2 = self.load_register(sr2);
+                let result = value1 & value2;
+                self.store_register(dr, result);
+                self.set_condition_codes(result);
+            }
+            AndInstruction::AndImm(dr, sr1, immediate5) => {
+                let value1 = self.load_register(sr1);
+                // Sign-extend the 5-bit immediate
+                let imm5 = immediate5.value();
+                let value2 = if imm5 & 0x10 != 0 {
+                    (imm5 as u16) | 0xFFE0 // sign extend
+                } else {
+                    imm5 as u16
+                };
+                let result = value1 & value2;
                 self.store_register(dr, result);
                 self.set_condition_codes(result);
             }
