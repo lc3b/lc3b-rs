@@ -66,7 +66,7 @@ const instructions: InstructionInfo[] = [
   },
   {
     name: "JMP",
-    supported: true,
+    supported: false,
     summary: "Unconditional jump to address in base register.",
     variants: [
       {
@@ -79,7 +79,7 @@ const instructions: InstructionInfo[] = [
   },
   {
     name: "JSR",
-    supported: true,
+    supported: false,
     summary: "Jump to subroutine. Saves return address in R7, then jumps to target.",
     variants: [
       {
@@ -92,7 +92,7 @@ const instructions: InstructionInfo[] = [
   },
   {
     name: "JSRR",
-    supported: true,
+    supported: false,
     summary: "Jump to subroutine via register. Saves return address in R7.",
     variants: [
       {
@@ -144,7 +144,7 @@ const instructions: InstructionInfo[] = [
   },
   {
     name: "LEA",
-    supported: true,
+    supported: false,
     summary: "Load effective address. Computes address without accessing memory.",
     variants: [
       {
@@ -170,7 +170,7 @@ const instructions: InstructionInfo[] = [
   },
   {
     name: "RET",
-    supported: true,
+    supported: false,
     summary: "Return from subroutine. Jumps to address in R7.",
     variants: [
       {
