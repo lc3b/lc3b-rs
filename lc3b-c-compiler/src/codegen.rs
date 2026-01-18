@@ -102,6 +102,13 @@ enum VarLocation {
     Stack(i16),
 }
 
+/// Information about an inlinable function
+#[derive(Debug, Clone)]
+struct InlineableFunction {
+    /// The trap vector to emit (for simple trap wrappers)
+    trap_vector: u8,
+}
+
 /// Compiler state
 struct Compiler {
     options: CompileOptions,
@@ -126,6 +133,8 @@ struct Compiler {
     defined_globals: std::collections::HashSet<String>,
     /// Count of words emitted (for alignment)
     word_count: usize,
+    /// Functions that can be inlined (maps name to inline info)
+    inlineable_functions: HashMap<String, InlineableFunction>,
 }
 
 enum DataItem {
@@ -142,6 +151,29 @@ fn is_simple_function(func: &Function) -> bool {
     
     // Simple if: at most 4 locals AND no function calls (except trap)
     local_count <= 4 && !has_calls
+}
+
+/// Check if a function is just a single trap() call and return the trap vector if so
+fn get_trap_only_function(func: &Function) -> Option<u8> {
+    // Must have exactly one statement in the body
+    if func.body.items.len() != 1 {
+        return None;
+    }
+    
+    match &func.body.items[0] {
+        BlockItem::Statement(Statement::Expression(expr)) => {
+            // Check if it's a call to trap() with a literal argument
+            if let Expression::Call { function, arguments } = expr {
+                if function == "trap" && arguments.len() == 1 {
+                    if let Expression::IntLiteral(vector) = &arguments[0] {
+                        return Some(*vector as u8);
+                    }
+                }
+            }
+            None
+        }
+        _ => None,
+    }
 }
 
 fn count_locals_and_calls(block: &Block, local_count: &mut usize, has_calls: &mut bool) {
@@ -242,6 +274,7 @@ impl Compiler {
             defined_functions: std::collections::HashSet::new(),
             defined_globals: std::collections::HashSet::new(),
             word_count: 0,
+            inlineable_functions: HashMap::new(),
         }
     }
 
@@ -272,11 +305,19 @@ impl Compiler {
     }
 
     fn compile_program(&mut self, program: &Program) -> Result<(), CompileError> {
-        // First pass: collect all defined functions and globals
+        // First pass: collect all defined functions, globals, and detect inlineable functions
         for item in &program.items {
             match item {
                 TopLevelItem::Function(f) => {
                     self.defined_functions.insert(f.name.clone());
+                    
+                    // Check if this function is just a trap wrapper
+                    if let Some(trap_vector) = get_trap_only_function(f) {
+                        self.inlineable_functions.insert(
+                            f.name.clone(),
+                            InlineableFunction { trap_vector },
+                        );
+                    }
                 }
                 TopLevelItem::GlobalDeclaration(d) => {
                     for declarator in &d.declarators {
@@ -318,8 +359,12 @@ impl Compiler {
             self.compile_main(main)?;
         }
 
-        // Compile other functions
+        // Compile other functions (skip inlineable ones)
         for func in other_funcs {
+            // Skip functions that will be inlined
+            if self.inlineable_functions.contains_key(&func.name) {
+                continue;
+            }
             self.emit("");
             self.compile_function(func)?;
         }
@@ -1146,6 +1191,21 @@ impl Compiler {
             });
         }
 
+        // Check if this function can be inlined (simple trap wrapper)
+        if let Some(inline_info) = self.inlineable_functions.get(function).cloned() {
+            self.emit_comment(&format!("{}() [inlined]", function));
+            
+            // Evaluate arguments into R0 (for functions like putchar that take a char)
+            // The trap will use whatever is in R0
+            for arg in arguments.iter() {
+                self.compile_expression(arg)?;
+            }
+            
+            // Emit the trap directly
+            self.emit_instruction(&format!("TRAP x{:02X}", inline_info.trap_vector));
+            return Ok(());
+        }
+
         // Regular function call
         self.emit_comment(&format!("Call {}()", function));
         
@@ -1432,12 +1492,12 @@ mod tests {
         "#;
         let result = compile(source, &CompileOptions::default()).unwrap();
         println!("{}", result);
-        // Should have the puts function from the header
-        assert!(result.contains("puts:"));
-        // Should call puts
-        assert!(result.contains("JSR puts"));
-        // puts should use TRAP x22
+        // puts is a simple trap wrapper, so it should be inlined
+        assert!(result.contains("puts() [inlined]"));
+        // Should emit TRAP x22 directly (no JSR)
         assert!(result.contains("TRAP x22"));
+        // Should NOT have the puts function defined (it's inlined)
+        assert!(!result.contains("puts:"));
     }
 
     #[test]
