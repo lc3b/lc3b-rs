@@ -188,20 +188,15 @@ impl Compiler {
         self.locals.clear();
         self.local_offset = -1; // First local at offset -1 from FP
 
-        // Set up stack frame
-        // R5 = frame pointer, R6 = stack pointer
-        self.emit_comment("Set up stack frame");
-        self.emit_instruction("ADD R6, R6, #-2"); // Make room for saved R5 and R7
-        self.emit_instruction("STW R7, R6, #0");  // Save return address
-        self.emit_instruction("STW R5, R6, #1");  // Save old frame pointer  
-        self.emit_instruction("ADD R5, R6, #0");  // R5 = new frame pointer
+        // main() is the entry point - no stack frame setup needed
+        // Just set R5 = R6 so local variable addressing works
+        self.emit_instruction("ADD R5, R6, #0");  // R5 = SP (frame pointer for locals)
 
         // Compile function body
         self.compile_block(&func.body)?;
 
-        // Epilogue (if we fall through without return)
+        // End of main - halt the machine
         self.emit_label("main_exit");
-        self.emit_comment("Exit main");
         self.emit_instruction("HALT");
 
         Ok(())
