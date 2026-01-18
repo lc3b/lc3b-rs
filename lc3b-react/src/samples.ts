@@ -4,7 +4,7 @@ export interface SampleProgram {
   code: string;
 }
 
-export const samplePrograms: SampleProgram[] = [
+export const assemblyExamples: SampleProgram[] = [
   {
     title: "Simple Addition",
     description: "Demonstrates ADD instruction with registers and immediates",
@@ -55,26 +55,6 @@ double:
     ADD R1, R1, R1   ; R1 = R1 * 2
     RET              ; Return to caller (PC = R7)
 done:
-    ADD R0, R0, #0   ; End of program`,
-  },
-  {
-    title: "JSRR Indirect Subroutine Call",
-    description: "Demonstrates JSRR instruction to call a subroutine via register",
-    code: `; JSRR Indirect Subroutine Example
-; Uses JSRR to jump to address stored in a register
-; This is useful for function pointers and dispatch tables
-
-ADD R1, R1, #3   ; R1 = 3 (value to negate)
-ADD R3, R3, #6   ; R3 = 6 (offset to negate subroutine)
-JSRR R3          ; Call subroutine at address in R3
-                 ; R7 now contains return address
-ADD R2, R1, #0   ; Copy result to R2
-BRnzp end        ; Skip over subroutine
-
-negate:
-    NOT R1, R1       ; R1 = ~R1
-    ADD R1, R1, #1   ; R1 = ~R1 + 1 = -R1 (two's complement)
-end:
     ADD R0, R0, #0   ; End of program`,
   },
   {
@@ -137,3 +117,143 @@ HALT             ; Stop execution
 .END`,
   },
 ];
+
+export const cExamples: SampleProgram[] = [
+  {
+    title: "Hello World",
+    description: "Print a message to the console",
+    code: `#include <lc3b-io.h>
+
+int main() {
+    puts("Hello, LC-3b!");
+    return 0;
+}`,
+  },
+  {
+    title: "Bitwise AND",
+    description: "Demonstrates the bitwise AND operator",
+    code: `// Bitwise AND example
+// Result is stored in R1
+
+int main() {
+    int a = 15;    // 0x000F in binary: 0000 0000 0000 1111
+    int b = 7;     // 0x0007 in binary: 0000 0000 0000 0111
+    int c = a & b; // Result: 7 (0x0007)
+    return c;
+}`,
+  },
+  {
+    title: "Bitwise OR",
+    description: "Demonstrates the bitwise OR operator",
+    code: `// Bitwise OR example
+// Result is stored in R1
+
+int main() {
+    int a = 12;    // 0x000C in binary: 0000 0000 0000 1100
+    int b = 5;     // 0x0005 in binary: 0000 0000 0000 0101
+    int c = a | b; // Result: 13 (0x000D)
+    return c;
+}`,
+  },
+  {
+    title: "Bitwise XOR",
+    description: "Demonstrates the bitwise XOR operator",
+    code: `// Bitwise XOR example
+// XOR: bits differ = 1, bits same = 0
+
+int main() {
+    int a = 12;    // 0x000C in binary: 0000 0000 0000 1100
+    int b = 10;    // 0x000A in binary: 0000 0000 0000 1010
+    int c = a ^ b; // Result: 6 (0x0006)
+    return c;
+}`,
+  },
+  {
+    title: "Bitwise NOT",
+    description: "Demonstrates the bitwise NOT (complement) operator",
+    code: `// Bitwise NOT example
+// Flips all bits
+
+int main() {
+    int a = 0;
+    int b = ~a;  // Result: -1 (0xFFFF, all bits set)
+    return b;
+}`,
+  },
+  {
+    title: "For Loop: Sum",
+    description: "Sum numbers 1 to 5 using a for loop",
+    code: `// For loop example
+// Calculates 1 + 2 + 3 + 4 + 5 = 15
+
+int main() {
+    int sum = 0;
+    for (int i = 1; i <= 5; i++) {
+        sum = sum + i;
+    }
+    return sum;
+}`,
+  },
+  {
+    title: "For Loop: Countdown",
+    description: "Count down from 5 to 1",
+    code: `#include <lc3b-io.h>
+
+// Countdown using a for loop
+// Prints: 5 4 3 2 1
+
+int main() {
+    for (int i = 5; i >= 1; i--) {
+        // Print digit (add '0' to convert to ASCII)
+        putchar('0' + i);
+        putchar(' ');
+    }
+    return 0;
+}`,
+  },
+  {
+    title: "String: Print Characters",
+    description: "Print a string character by character",
+    code: `#include <lc3b-io.h>
+
+// Print each character of "Hi" manually
+
+int main() {
+    putchar('H');
+    putchar('i');
+    putchar('!');
+    return 0;
+}`,
+  },
+  {
+    title: "String: Using puts()",
+    description: "Print strings using the puts() function",
+    code: `#include <lc3b-io.h>
+
+// Print multiple strings
+
+int main() {
+    puts("Line 1");
+    puts("Line 2");
+    puts("Done!");
+    return 0;
+}`,
+  },
+  {
+    title: "Arithmetic",
+    description: "Basic arithmetic operations",
+    code: `// Arithmetic example
+// Demonstrates add and subtract
+
+int main() {
+    int a = 10;
+    int b = 3;
+    int sum = a + b;   // 13
+    int diff = a - b;  // 7
+    return diff;
+}`,
+  },
+];
+
+// Legacy export for backwards compatibility
+export const samplePrograms = assemblyExamples;

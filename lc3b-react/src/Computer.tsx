@@ -150,8 +150,15 @@ function Computer() {
     return 0;
   };
 
-  const handleLoadSample = (code: string) => {
-    setAssembly(code);
+  const handleLoadSample = (code: string, mode: "assembly" | "c") => {
+    if (mode === "c") {
+      setCCode(code);
+      setEditorMode("c");
+      setCompileError(null);
+    } else {
+      setAssembly(code);
+      setEditorMode("assembly");
+    }
     setProgramLoaded(false);
     setLoadError(null);
     setActiveTab("simulator");
@@ -198,7 +205,7 @@ function Computer() {
                 onClick={() => setActiveTab("samples")}
                 className={`tab-button px-4 py-2 ${activeTab === "samples" ? "active" : ""}`}
               >
-                Samples
+                Examples
               </button>
               <button
                 onClick={() => setActiveTab("about")}

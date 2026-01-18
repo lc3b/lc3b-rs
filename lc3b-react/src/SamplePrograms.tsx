@@ -1,22 +1,53 @@
-import { samplePrograms } from "./samples";
+import { useState } from "react";
+import { assemblyExamples, cExamples, SampleProgram } from "./samples";
+
+type ExampleTab = "assembly" | "c";
 
 interface SampleProgramsProps {
-  onLoadSample: (code: string) => void;
+  onLoadSample: (code: string, mode: "assembly" | "c") => void;
 }
 
 export function SamplePrograms({ onLoadSample }: SampleProgramsProps) {
+  const [activeTab, setActiveTab] = useState<ExampleTab>("assembly");
+
+  const examples: SampleProgram[] = activeTab === "assembly" ? assemblyExamples : cExamples;
+
   return (
     <div className="p-6">
       <div className="max-w-4xl mx-auto">
         <h2 className="text-2xl font-bold text-accent-primary mb-6">
-          Sample Programs
+          Examples
         </h2>
-        <p className="text-text-primary mb-8">
-          Click "Try This Program" to load a sample program into the simulator.
+        <p className="text-text-primary mb-6">
+          Click "Load Example" to load a program into the simulator.
         </p>
 
+        {/* Subtabs for Assembly / C */}
+        <div className="flex gap-2 mb-8">
+          <button
+            onClick={() => setActiveTab("assembly")}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${
+              activeTab === "assembly"
+                ? "bg-[var(--accent-primary)] text-[var(--bg-primary)]"
+                : "bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+            }`}
+          >
+            Assembly
+          </button>
+          <button
+            onClick={() => setActiveTab("c")}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${
+              activeTab === "c"
+                ? "bg-[var(--accent-primary)] text-[var(--bg-primary)]"
+                : "bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+            }`}
+          >
+            C
+          </button>
+        </div>
+
         <div className="space-y-6">
-          {samplePrograms.map((sample, index) => (
+          {examples.map((sample, index) => (
             <div
               key={index}
               className="bg-bg-tertiary rounded-lg p-5 border-l-4 border-accent-secondary"
@@ -33,10 +64,10 @@ export function SamplePrograms({ onLoadSample }: SampleProgramsProps) {
               </div>
 
               <button
-                onClick={() => onLoadSample(sample.code)}
+                onClick={() => onLoadSample(sample.code, activeTab)}
                 className="btn-primary px-5 py-2.5"
               >
-                Try this program
+                Load example
               </button>
             </div>
           ))}
