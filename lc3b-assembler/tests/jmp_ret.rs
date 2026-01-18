@@ -7,11 +7,7 @@
 use lc3b_assembler::parse_to_program;
 use lc3b_isa::{Instruction, Register};
 
-// Note: JMP and RET are not yet implemented in the assembler, so these tests are marked as ignored
-// until support is added.
-
 #[test]
-#[ignore = "JMP instruction not yet implemented in assembler"]
 fn test_jmp() {
     // JMP R2 ; PC <- R2
     let asm = "JMP R2";
@@ -25,7 +21,6 @@ fn test_jmp() {
 }
 
 #[test]
-#[ignore = "JMP instruction not yet implemented in assembler"]
 fn test_jmp_encoding() {
     // JMP R2 should encode as:
     // 1100 000 010 000000
@@ -38,7 +33,6 @@ fn test_jmp_encoding() {
 }
 
 #[test]
-#[ignore = "RET instruction not yet implemented in assembler"]
 fn test_ret() {
     // RET ; PC <- R7
     let asm = "RET";
@@ -52,7 +46,6 @@ fn test_ret() {
 }
 
 #[test]
-#[ignore = "RET instruction not yet implemented in assembler"]
 fn test_ret_encoding() {
     // RET should encode as:
     // 1100 000 111 000000

@@ -472,6 +472,13 @@ impl Assembler {
                 let offset = PCOffset9::new(stored_offset);
                 Instruction::Lea(dst_reg, offset)
             }
+            "JMP" => {
+                let mut operands = inner.next().unwrap().into_inner();
+                let arg_one = operands.next().unwrap().as_str();
+                let base_reg = Register::from_str(arg_one)?;
+                Instruction::Jmp(base_reg)
+            }
+            "RET" => Instruction::Ret,
             // Trap aliases
             "GETC" => Instruction::Trap(TrapVect8::new(0x20)),
             "OUT" => Instruction::Trap(TrapVect8::new(0x21)),

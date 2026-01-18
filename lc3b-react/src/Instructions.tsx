@@ -66,7 +66,7 @@ const instructions: InstructionInfo[] = [
   },
   {
     name: "JMP",
-    supported: false,
+    supported: true,
     summary: "Unconditional jump to address in base register.",
     variants: [
       {
@@ -170,7 +170,7 @@ const instructions: InstructionInfo[] = [
   },
   {
     name: "RET",
-    supported: false,
+    supported: true,
     summary: "Return from subroutine. Jumps to address in R7.",
     variants: [
       {

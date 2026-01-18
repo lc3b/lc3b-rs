@@ -177,7 +177,9 @@ impl<I: IO, O: Observer> Computer<I, O> {
             Instruction::Br(condition, pcoffset9) => {
                 self.perform_br_instruction(condition, pcoffset9);
             }
-            Instruction::Jmp(register) => todo!(),
+            Instruction::Jmp(base) => {
+                self.perform_jmp_instruction(base);
+            }
             Instruction::Jsr(pcoffset11) => {
                 self.perform_jsr_instruction(pcoffset11);
             }
@@ -193,7 +195,10 @@ impl<I: IO, O: Observer> Computer<I, O> {
             Instruction::Not(dr, sr) => {
                 self.perform_not_instruction(dr, sr);
             }
-            Instruction::Ret => todo!(),
+            Instruction::Ret => {
+                // RET is just JMP R7
+                self.perform_jmp_instruction(Register::Register7);
+            }
             Instruction::Rti => todo!(),
             Instruction::Shf(register, register1, bit, bit1, immediate4) => todo!(),
             Instruction::Stb(register, register1, pcoffset6) => todo!(),
@@ -306,6 +311,13 @@ impl<I: IO, O: Observer> Computer<I, O> {
 
         // Jump to address in base register
         // Since next_instruction adds 1 after execute, we set PC = target - 1
+        self.program_counter = target.wrapping_sub(1);
+    }
+
+    pub fn perform_jmp_instruction(&mut self, base: Register) {
+        // JMP: PC = BaseR
+        // Since next_instruction adds 1 after execute, we set PC = target - 1
+        let target = self.load_register(base);
         self.program_counter = target.wrapping_sub(1);
     }
 

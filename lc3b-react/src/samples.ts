@@ -53,7 +53,7 @@ BRnzp done       ; Skip over subroutine
 
 double:
     ADD R1, R1, R1   ; R1 = R1 * 2
-    ; Note: RET not yet implemented, subroutine ends here
+    RET              ; Return to caller (PC = R7)
 done:
     ADD R0, R0, #0   ; End of program`,
   },
