@@ -1,4 +1,4 @@
-use lc3b_isa::{AddInstruction, AndInstruction, Condition, Instruction, PCOffset9, PCOffset11, Register};
+use lc3b_isa::{AddInstruction, AndInstruction, Condition, Instruction, PCOffset6, PCOffset9, PCOffset11, Register};
 
 use crate::{Memory, Observer, IO, USER_PROGRAM_START};
 
@@ -203,7 +203,9 @@ impl<I: IO, O: Observer> Computer<I, O> {
             Instruction::Shf(register, register1, bit, bit1, immediate4) => todo!(),
             Instruction::Stb(register, register1, pcoffset6) => todo!(),
             Instruction::Sti(register, register1, pcoffset6) => todo!(),
-            Instruction::Str(register, register1, pcoffset6) => todo!(),
+            Instruction::Stw(sr, base, offset) => {
+                self.perform_stw_instruction(sr, base, offset);
+            }
             Instruction::Trap(trap_vect8) => {
                 self.perform_trap(trap_vect8.value());
             }
@@ -331,6 +333,16 @@ impl<I: IO, O: Observer> Computer<I, O> {
         let result = pc_plus_1.wrapping_add(shifted_offset);
         self.store_register(dr, result);
         self.set_condition_codes(result);
+    }
+
+    pub fn perform_stw_instruction(&mut self, sr: Register, base: Register, offset: PCOffset6) {
+        // STW: MEM[BaseR + LSHF(SEXT(offset6), 1)] = SR
+        let base_val = self.load_register(base);
+        let signed_offset = offset.sign_extend();
+        let shifted_offset = (signed_offset << 1) as u16; // LSHF by 1 for word alignment
+        let address = base_val.wrapping_add(shifted_offset);
+        let value = self.load_register(sr);
+        self.memory.write_word(address, value);
     }
 
     // --- TRAP implementation ---

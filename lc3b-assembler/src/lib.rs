@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, str::FromStr};
 
-use lc3b_isa::{AddInstruction, AndInstruction, Condition, Immediate5, Instruction, PCOffset9, PCOffset11, Register, TrapVect8};
+use lc3b_isa::{AddInstruction, AndInstruction, Condition, Immediate5, Instruction, PCOffset6, PCOffset9, PCOffset11, Register, TrapVect8};
 use pest::{
     iterators::{Pair, Pairs},
     Parser,
@@ -479,6 +479,44 @@ impl Assembler {
                 Instruction::Jmp(base_reg)
             }
             "RET" => Instruction::Ret,
+            "STW" => {
+                let mut operands = inner.next().unwrap().into_inner();
+                let sr = Register::from_str(operands.next().unwrap().as_str())?;
+                let base = Register::from_str(operands.next().unwrap().as_str())?;
+                let offset_arg = operands.next().unwrap();
+                let offset_value: i8 = match offset_arg.as_rule() {
+                    Rule::literal => {
+                        let s = offset_arg.as_str().strip_prefix('#').unwrap_or(offset_arg.as_str());
+                        s.parse()?
+                    }
+                    Rule::hex_literal => {
+                        let value = self.parse_hex_literal(&offset_arg)?;
+                        value as i8
+                    }
+                    _ => return Err(eyre::eyre!("Expected offset, got {:?}", offset_arg.as_rule())),
+                };
+                let offset = PCOffset6::new(offset_value)?;
+                Instruction::Stw(sr, base, offset)
+            }
+            "LDW" => {
+                let mut operands = inner.next().unwrap().into_inner();
+                let dr = Register::from_str(operands.next().unwrap().as_str())?;
+                let base = Register::from_str(operands.next().unwrap().as_str())?;
+                let offset_arg = operands.next().unwrap();
+                let offset_value: i8 = match offset_arg.as_rule() {
+                    Rule::literal => {
+                        let s = offset_arg.as_str().strip_prefix('#').unwrap_or(offset_arg.as_str());
+                        s.parse()?
+                    }
+                    Rule::hex_literal => {
+                        let value = self.parse_hex_literal(&offset_arg)?;
+                        value as i8
+                    }
+                    _ => return Err(eyre::eyre!("Expected offset, got {:?}", offset_arg.as_rule())),
+                };
+                let offset = PCOffset6::new(offset_value)?;
+                Instruction::Ldr(dr, base, offset)  // LDW uses same encoding as LDR
+            }
             // Trap aliases
             "GETC" => Instruction::Trap(TrapVect8::new(0x20)),
             "OUT" => Instruction::Trap(TrapVect8::new(0x21)),

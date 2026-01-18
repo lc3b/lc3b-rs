@@ -5,22 +5,16 @@
 
 use lc3b_assembler::parse_to_program;
 
-// Note: STW is not yet implemented in the assembler, so these tests are marked as ignored
-// until support is added.
-
 #[test]
-#[ignore = "STW instruction not yet implemented in assembler"]
 fn test_stw() {
     // STW R4, R2, #10 ; MEM[R2 + 20] <- R4
     let asm = "STW R4, R2, #10";
     let instructions = parse_to_program(asm).unwrap();
 
     assert_eq!(instructions.len(), 1);
-    // Expected: Str(Register4, Register2, Offset6::new(10))
 }
 
 #[test]
-#[ignore = "STW instruction not yet implemented in assembler"]
 fn test_stw_encoding() {
     // STW R4, R2, #10 should encode as:
     // 0111 100 010 001010

@@ -37,7 +37,7 @@ pub enum Instruction {
     Shf(Register, Register, Bit, Bit, Immediate4),
     Stb(Register, Register, PCOffset6),
     Sti(Register, Register, PCOffset6),
-    Str(Register, Register, PCOffset6),
+    Stw(Register, Register, PCOffset6),
     Trap(TrapVect8),
 }
 
@@ -164,7 +164,7 @@ impl From<&Instruction> for u16 {
                 let offset_bits = (offset.0 as u16) & 0x3F;
                 opcode | sr_bits | base_bits | offset_bits
             }
-            Instruction::Str(sr, base, offset) => {
+            Instruction::Stw(sr, base, offset) => {
                 let opcode = 0b0111u16 << 12;
                 let sr_bits = (sr.to_index() as u16) << 9;
                 let base_bits = (base.to_index() as u16) << 6;
@@ -311,11 +311,11 @@ impl TryFrom<u16> for Instruction {
                 Ok(Instruction::Sti(sr, base, offset))
             }
             0b0111 => {
-                // STR
+                // STW
                 let sr = Register::from_index(((word >> 9) & 0x7) as u8);
                 let base = Register::from_index(((word >> 6) & 0x7) as u8);
                 let offset = PCOffset6((word & 0x3F) as u8);
-                Ok(Instruction::Str(sr, base, offset))
+                Ok(Instruction::Stw(sr, base, offset))
             }
             0b1111 => {
                 // TRAP
@@ -474,6 +474,33 @@ impl PCOffset11 {
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct PCOffset6(u8);
+
+impl PCOffset6 {
+    /// Create a new PCOffset6 from a signed value (-32 to 31)
+    pub fn new(value: i8) -> eyre::Result<Self> {
+        if value < -32 || value > 31 {
+            return Err(eyre::eyre!(
+                "PCOffset6 value {} out of range (-32 to 31)",
+                value
+            ));
+        }
+        Ok(PCOffset6((value as u8) & 0x3F))
+    }
+
+    /// Sign-extend the 6-bit offset to 16 bits
+    pub fn sign_extend(&self) -> i16 {
+        if self.0 & 0x20 != 0 {
+            // Negative: sign-extend with 1s
+            ((self.0 as u16) | 0xFFC0) as i16
+        } else {
+            self.0 as i16
+        }
+    }
+
+    pub fn value(&self) -> u8 {
+        self.0
+    }
+}
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Bit(bool);

@@ -93,26 +93,136 @@ fn expand_includes(program: &Program) -> Result<Program, CompileError> {
     Ok(Program { items: expanded_items })
 }
 
+/// Where a variable is stored
+#[derive(Debug, Clone, Copy)]
+enum VarLocation {
+    /// Stored in a register (R1-R4)
+    Register(u8),
+    /// Stored on stack at offset from frame pointer (R5)
+    Stack(i16),
+}
+
 /// Compiler state
 struct Compiler {
     options: CompileOptions,
     output: String,
     /// Current label counter for generating unique labels
     label_counter: u32,
-    /// Variable storage: maps variable name to stack offset from frame pointer (R5)
-    /// Positive offsets are parameters, negative are locals
-    locals: HashMap<String, i16>,
-    /// Current stack offset for next local variable
+    /// Variable storage: maps variable name to location (register or stack)
+    locals: HashMap<String, VarLocation>,
+    /// Current stack offset for next local variable (when using stack allocation)
     local_offset: i16,
+    /// Next available register for allocation (R1-R4)
+    next_reg: u8,
+    /// Whether current function uses register allocation
+    use_registers: bool,
     /// Global variables and string literals
     data_section: Vec<DataItem>,
     /// Current function name (for generating labels)
     current_function: String,
+    /// Set of defined function names
+    defined_functions: std::collections::HashSet<String>,
+    /// Set of defined global variable names
+    defined_globals: std::collections::HashSet<String>,
 }
 
 enum DataItem {
     String { label: String, value: String },
     Word { label: String, value: i32 },
+}
+
+/// Analyze a function to determine if it's "simple" enough for register allocation
+fn is_simple_function(func: &Function) -> bool {
+    let mut local_count = 0;
+    let mut has_calls = false;
+    
+    count_locals_and_calls(&func.body, &mut local_count, &mut has_calls);
+    
+    // Simple if: at most 4 locals AND no function calls (except trap)
+    local_count <= 4 && !has_calls
+}
+
+fn count_locals_and_calls(block: &Block, local_count: &mut usize, has_calls: &mut bool) {
+    for item in &block.items {
+        match item {
+            BlockItem::Declaration(decl) => {
+                *local_count += decl.declarators.len();
+            }
+            BlockItem::Statement(stmt) => {
+                check_statement_for_calls(stmt, local_count, has_calls);
+            }
+        }
+    }
+}
+
+fn check_statement_for_calls(stmt: &Statement, local_count: &mut usize, has_calls: &mut bool) {
+    match stmt {
+        Statement::Expression(expr) => {
+            check_expression_for_calls(expr, has_calls);
+        }
+        Statement::Compound(block) => {
+            count_locals_and_calls(block, local_count, has_calls);
+        }
+        Statement::If { condition, then_branch, else_branch } => {
+            check_expression_for_calls(condition, has_calls);
+            check_statement_for_calls(then_branch, local_count, has_calls);
+            if let Some(else_stmt) = else_branch {
+                check_statement_for_calls(else_stmt, local_count, has_calls);
+            }
+        }
+        Statement::While { condition, body } => {
+            check_expression_for_calls(condition, has_calls);
+            check_statement_for_calls(body, local_count, has_calls);
+        }
+        Statement::For { init, condition, update, body } => {
+            if let Some(ForInit::Declaration(decl)) = init {
+                *local_count += decl.declarators.len();
+            }
+            if let Some(ForInit::Expression(expr)) = init {
+                check_expression_for_calls(expr, has_calls);
+            }
+            if let Some(cond) = condition {
+                check_expression_for_calls(cond, has_calls);
+            }
+            if let Some(upd) = update {
+                check_expression_for_calls(upd, has_calls);
+            }
+            check_statement_for_calls(body, local_count, has_calls);
+        }
+        Statement::Return(Some(expr)) => {
+            check_expression_for_calls(expr, has_calls);
+        }
+        _ => {}
+    }
+}
+
+fn check_expression_for_calls(expr: &Expression, has_calls: &mut bool) {
+    match expr {
+        Expression::Call { function, arguments } => {
+            // trap() is an intrinsic, doesn't count as a real call
+            if function != "trap" {
+                *has_calls = true;
+            }
+            for arg in arguments {
+                check_expression_for_calls(arg, has_calls);
+            }
+        }
+        Expression::Binary { left, right, .. } => {
+            check_expression_for_calls(left, has_calls);
+            check_expression_for_calls(right, has_calls);
+        }
+        Expression::Unary { operand, .. } => {
+            check_expression_for_calls(operand, has_calls);
+        }
+        Expression::Assignment { value, .. } => {
+            check_expression_for_calls(value, has_calls);
+        }
+        Expression::Subscript { array, index } => {
+            check_expression_for_calls(array, has_calls);
+            check_expression_for_calls(index, has_calls);
+        }
+        _ => {}
+    }
 }
 
 impl Compiler {
@@ -123,8 +233,12 @@ impl Compiler {
             label_counter: 0,
             locals: HashMap::new(),
             local_offset: 0,
+            next_reg: 1, // Start with R1 (R0 is for return values/temps)
+            use_registers: false,
             data_section: Vec::new(),
             current_function: String::new(),
+            defined_functions: std::collections::HashSet::new(),
+            defined_globals: std::collections::HashSet::new(),
         }
     }
 
@@ -154,6 +268,21 @@ impl Compiler {
     }
 
     fn compile_program(&mut self, program: &Program) -> Result<(), CompileError> {
+        // First pass: collect all defined functions and globals
+        for item in &program.items {
+            match item {
+                TopLevelItem::Function(f) => {
+                    self.defined_functions.insert(f.name.clone());
+                }
+                TopLevelItem::GlobalDeclaration(d) => {
+                    for declarator in &d.declarators {
+                        self.defined_globals.insert(declarator.name.clone());
+                    }
+                }
+                TopLevelItem::Include(_) => {}
+            }
+        }
+        
         // Emit origin
         self.emit(&format!(".ORIG x{:04X}", self.options.origin));
         self.emit("");
@@ -234,10 +363,18 @@ impl Compiler {
         // Reset locals for this function
         self.locals.clear();
         self.local_offset = -1; // First local at offset -1 from FP
-
-        // main() is the entry point - no stack frame setup needed
-        // Just set R5 = R6 so local variable addressing works
-        self.emit_instruction("ADD R5, R6, #0");  // R5 = SP (frame pointer for locals)
+        self.next_reg = 1; // R1-R4 available for locals
+        
+        // Check if we can use register allocation
+        self.use_registers = is_simple_function(func);
+        
+        if self.use_registers {
+            self.emit_comment("Using register allocation for locals");
+        } else {
+            // main() is the entry point - no stack frame setup needed
+            // Just set R5 = R6 so local variable addressing works
+            self.emit_instruction("ADD R5, R6, #0");  // R5 = SP (frame pointer for locals)
+        }
 
         // Compile function body
         self.compile_block(&func.body)?;
@@ -266,6 +403,11 @@ impl Compiler {
         // Reset locals
         self.locals.clear();
         self.local_offset = -1;
+        self.next_reg = 1;
+        
+        // For non-main functions, we always need stack frame for R7 (return address)
+        // But we can still use registers for locals if it's simple
+        self.use_registers = is_simple_function(func) && func.parameters.is_empty();
 
         // Set up stack frame
         self.emit_comment("Set up stack frame");
@@ -274,10 +416,14 @@ impl Compiler {
         self.emit_instruction("STW R5, R6, #1");
         self.emit_instruction("ADD R5, R6, #0");
 
+        if self.use_registers {
+            self.emit_comment("Using register allocation for locals");
+        }
+
         // Map parameters to positive offsets from frame pointer
         // Parameters are pushed right-to-left by caller, so first param is at FP+2
         for (i, param) in func.parameters.iter().enumerate() {
-            self.locals.insert(param.name.clone(), i as i16 + 2);
+            self.locals.insert(param.name.clone(), VarLocation::Stack(i as i16 + 2));
         }
 
         // Compile body
@@ -312,11 +458,22 @@ impl Compiler {
 
     fn compile_declaration(&mut self, decl: &Declaration) -> Result<(), CompileError> {
         for declarator in &decl.declarators {
-            // Allocate space on stack
-            self.emit_instruction("ADD R6, R6, #-1"); // Push space for variable
+            // Decide where to allocate this variable
+            let location = if self.use_registers && self.next_reg <= 4 {
+                // Allocate to a register
+                let reg = self.next_reg;
+                self.next_reg += 1;
+                VarLocation::Register(reg)
+            } else {
+                // Allocate on stack
+                self.emit_instruction("ADD R6, R6, #-1"); // Push space for variable
+                let loc = VarLocation::Stack(self.local_offset);
+                self.local_offset -= 1;
+                loc
+            };
             
             // Record variable location
-            self.locals.insert(declarator.name.clone(), self.local_offset);
+            self.locals.insert(declarator.name.clone(), location);
             
             if let Some(init) = &declarator.initializer {
                 self.emit_comment(&format!("{} {} = ...", type_to_string(&decl.ty), declarator.name));
@@ -325,8 +482,14 @@ impl Compiler {
                         // Evaluate expression into R0
                         self.compile_expression(expr)?;
                         // Store R0 at variable location
-                        let offset = self.locals[&declarator.name];
-                        self.emit_instruction(&format!("STW R0, R5, #{}", offset));
+                        match location {
+                            VarLocation::Register(reg) => {
+                                self.emit_instruction(&format!("ADD R{}, R0, #0", reg));
+                            }
+                            VarLocation::Stack(offset) => {
+                                self.emit_instruction(&format!("STW R0, R5, #{}", offset));
+                            }
+                        }
                     }
                     Initializer::String(s) => {
                         // Create string in data section and store pointer
@@ -336,15 +499,23 @@ impl Compiler {
                             value: s.clone(),
                         });
                         self.emit_instruction(&format!("LEA R0, {}", label));
-                        let offset = self.locals[&declarator.name];
-                        self.emit_instruction(&format!("STW R0, R5, #{}", offset));
+                        match location {
+                            VarLocation::Register(reg) => {
+                                self.emit_instruction(&format!("ADD R{}, R0, #0", reg));
+                            }
+                            VarLocation::Stack(offset) => {
+                                self.emit_instruction(&format!("STW R0, R5, #{}", offset));
+                            }
+                        }
                     }
                 }
             } else {
                 self.emit_comment(&format!("{} {} (uninitialized)", type_to_string(&decl.ty), declarator.name));
+                // For register-allocated uninitialized vars, we could zero them
+                if let VarLocation::Register(reg) = location {
+                    self.emit_instruction(&format!("AND R{}, R{}, #0", reg, reg));
+                }
             }
-            
-            self.local_offset -= 1;
         }
         Ok(())
     }
@@ -529,12 +700,23 @@ impl Compiler {
                 self.emit_instruction(&format!("LEA R0, {}", label));
             }
             Expression::Identifier(name) => {
-                if let Some(&offset) = self.locals.get(name) {
-                    self.emit_instruction(&format!("LDW R0, R5, #{}", offset));
-                } else {
+                if let Some(&location) = self.locals.get(name) {
+                    match location {
+                        VarLocation::Register(reg) => {
+                            self.emit_instruction(&format!("ADD R0, R{}, #0", reg));
+                        }
+                        VarLocation::Stack(offset) => {
+                            self.emit_instruction(&format!("LDW R0, R5, #{}", offset));
+                        }
+                    }
+                } else if self.defined_globals.contains(name) {
                     // Global variable
                     self.emit_instruction(&format!("LEA R0, {}", name));
                     self.emit_instruction("LDW R0, R0, #0");
+                } else {
+                    return Err(CompileError {
+                        message: format!("undefined variable '{}'", name),
+                    });
                 }
             }
             Expression::Binary { op, left, right } => {
@@ -836,6 +1018,15 @@ impl Compiler {
         target: &str,
         value: &Expression,
     ) -> Result<(), CompileError> {
+        let target_location = self.locals.get(target).copied();
+        
+        // Validate that the target variable exists
+        if target_location.is_none() && !self.defined_globals.contains(target) {
+            return Err(CompileError {
+                message: format!("undefined variable '{}'", target),
+            });
+        }
+        
         match op {
             AssignOp::Assign => {
                 self.compile_expression(value)?;
@@ -843,11 +1034,17 @@ impl Compiler {
             AssignOp::AddAssign | AssignOp::SubAssign | AssignOp::AndAssign
             | AssignOp::OrAssign | AssignOp::XorAssign => {
                 // Load current value
-                if let Some(&offset) = self.locals.get(target) {
-                    self.emit_instruction(&format!("LDW R0, R5, #{}", offset));
-                } else {
-                    self.emit_instruction(&format!("LEA R0, {}", target));
-                    self.emit_instruction("LDW R0, R0, #0");
+                match target_location {
+                    Some(VarLocation::Register(reg)) => {
+                        self.emit_instruction(&format!("ADD R0, R{}, #0", reg));
+                    }
+                    Some(VarLocation::Stack(offset)) => {
+                        self.emit_instruction(&format!("LDW R0, R5, #{}", offset));
+                    }
+                    None => {
+                        self.emit_instruction(&format!("LEA R0, {}", target));
+                        self.emit_instruction("LDW R0, R0, #0");
+                    }
                 }
                 
                 // Push current value
@@ -898,14 +1095,20 @@ impl Compiler {
         }
 
         // Store result
-        if let Some(&offset) = self.locals.get(target) {
-            self.emit_instruction(&format!("STW R0, R5, #{}", offset));
-        } else {
-            // Global variable - need to use a temp register for address
-            self.emit_instruction("ADD R1, R0, #0"); // Save value
-            self.emit_instruction(&format!("LEA R0, {}", target));
-            self.emit_instruction("STW R1, R0, #0");
-            self.emit_instruction("ADD R0, R1, #0"); // Restore R0
+        match target_location {
+            Some(VarLocation::Register(reg)) => {
+                self.emit_instruction(&format!("ADD R{}, R0, #0", reg));
+            }
+            Some(VarLocation::Stack(offset)) => {
+                self.emit_instruction(&format!("STW R0, R5, #{}", offset));
+            }
+            None => {
+                // Global variable - need to use a temp register for address
+                self.emit_instruction("ADD R1, R0, #0"); // Save value
+                self.emit_instruction(&format!("LEA R0, {}", target));
+                self.emit_instruction("STW R1, R0, #0");
+                self.emit_instruction("ADD R0, R1, #0"); // Restore R0
+            }
         }
 
         Ok(())
@@ -924,6 +1127,13 @@ impl Compiler {
                 return Err(CompileError { message: "trap() argument must be a constant".to_string() });
             }
             return Ok(());
+        }
+
+        // Validate that the function is defined
+        if !self.defined_functions.contains(function) {
+            return Err(CompileError { 
+                message: format!("undefined function '{}' (did you forget to #include a header?)", function) 
+            });
         }
 
         // Regular function call
@@ -949,32 +1159,65 @@ impl Compiler {
     }
 
     fn compile_post_inc_dec(&mut self, name: &str, increment: bool) -> Result<(), CompileError> {
+        let location = self.locals.get(name).copied();
+        
+        // Validate that the variable exists
+        if location.is_none() && !self.defined_globals.contains(name) {
+            return Err(CompileError {
+                message: format!("undefined variable '{}'", name),
+            });
+        }
+        
         // Load current value into R0 (this is the return value)
-        if let Some(&offset) = self.locals.get(name) {
-            self.emit_instruction(&format!("LDW R0, R5, #{}", offset));
-        } else {
-            self.emit_instruction(&format!("LEA R1, {}", name));
-            self.emit_instruction("LDW R0, R1, #0");
+        match location {
+            Some(VarLocation::Register(reg)) => {
+                self.emit_instruction(&format!("ADD R0, R{}, #0", reg));
+            }
+            Some(VarLocation::Stack(offset)) => {
+                self.emit_instruction(&format!("LDW R0, R5, #{}", offset));
+            }
+            None => {
+                self.emit_instruction(&format!("LEA R1, {}", name));
+                self.emit_instruction("LDW R0, R1, #0");
+            }
         }
 
-        // Save original value
-        self.emit_instruction("ADD R1, R0, #0");
-
-        // Increment/decrement
-        if increment {
-            self.emit_instruction("ADD R1, R1, #1");
-        } else {
-            self.emit_instruction("ADD R1, R1, #-1");
-        }
-
-        // Store new value
-        if let Some(&offset) = self.locals.get(name) {
-            self.emit_instruction(&format!("STW R1, R5, #{}", offset));
-        } else {
-            self.emit_instruction("ADD R2, R0, #0"); // Save return value
-            self.emit_instruction(&format!("LEA R0, {}", name));
-            self.emit_instruction("STW R1, R0, #0");
-            self.emit_instruction("ADD R0, R2, #0"); // Restore return value
+        // For register-allocated vars, we can increment directly
+        match location {
+            Some(VarLocation::Register(reg)) => {
+                // Increment/decrement the register directly
+                if increment {
+                    self.emit_instruction(&format!("ADD R{}, R{}, #1", reg, reg));
+                } else {
+                    self.emit_instruction(&format!("ADD R{}, R{}, #-1", reg, reg));
+                }
+                // R0 still has original value
+            }
+            Some(VarLocation::Stack(offset)) => {
+                // Save original value
+                self.emit_instruction("ADD R1, R0, #0");
+                // Increment/decrement
+                if increment {
+                    self.emit_instruction("ADD R1, R1, #1");
+                } else {
+                    self.emit_instruction("ADD R1, R1, #-1");
+                }
+                // Store new value
+                self.emit_instruction(&format!("STW R1, R5, #{}", offset));
+            }
+            None => {
+                // Global variable
+                self.emit_instruction("ADD R1, R0, #0");
+                if increment {
+                    self.emit_instruction("ADD R1, R1, #1");
+                } else {
+                    self.emit_instruction("ADD R1, R1, #-1");
+                }
+                self.emit_instruction("ADD R2, R0, #0"); // Save return value
+                self.emit_instruction(&format!("LEA R0, {}", name));
+                self.emit_instruction("STW R1, R0, #0");
+                self.emit_instruction("ADD R0, R2, #0"); // Restore return value
+            }
         }
 
         // R0 still has original value
@@ -982,27 +1225,50 @@ impl Compiler {
     }
 
     fn compile_pre_inc_dec(&mut self, name: &str, increment: bool) -> Result<(), CompileError> {
-        // Load current value
-        if let Some(&offset) = self.locals.get(name) {
-            self.emit_instruction(&format!("LDW R0, R5, #{}", offset));
-        } else {
-            self.emit_instruction(&format!("LEA R1, {}", name));
-            self.emit_instruction("LDW R0, R1, #0");
+        let location = self.locals.get(name).copied();
+        
+        // Validate that the variable exists
+        if location.is_none() && !self.defined_globals.contains(name) {
+            return Err(CompileError {
+                message: format!("undefined variable '{}'", name),
+            });
         }
-
-        // Increment/decrement
-        if increment {
-            self.emit_instruction("ADD R0, R0, #1");
-        } else {
-            self.emit_instruction("ADD R0, R0, #-1");
-        }
-
-        // Store new value
-        if let Some(&offset) = self.locals.get(name) {
-            self.emit_instruction(&format!("STW R0, R5, #{}", offset));
-        } else {
-            self.emit_instruction(&format!("LEA R1, {}", name));
-            self.emit_instruction("STW R0, R1, #0");
+        
+        match location {
+            Some(VarLocation::Register(reg)) => {
+                // Increment/decrement the register directly
+                if increment {
+                    self.emit_instruction(&format!("ADD R{}, R{}, #1", reg, reg));
+                } else {
+                    self.emit_instruction(&format!("ADD R{}, R{}, #-1", reg, reg));
+                }
+                // Copy to R0 for return value
+                self.emit_instruction(&format!("ADD R0, R{}, #0", reg));
+            }
+            Some(VarLocation::Stack(offset)) => {
+                // Load current value
+                self.emit_instruction(&format!("LDW R0, R5, #{}", offset));
+                // Increment/decrement
+                if increment {
+                    self.emit_instruction("ADD R0, R0, #1");
+                } else {
+                    self.emit_instruction("ADD R0, R0, #-1");
+                }
+                // Store new value
+                self.emit_instruction(&format!("STW R0, R5, #{}", offset));
+            }
+            None => {
+                // Global variable
+                self.emit_instruction(&format!("LEA R1, {}", name));
+                self.emit_instruction("LDW R0, R1, #0");
+                if increment {
+                    self.emit_instruction("ADD R0, R0, #1");
+                } else {
+                    self.emit_instruction("ADD R0, R0, #-1");
+                }
+                self.emit_instruction(&format!("LEA R1, {}", name));
+                self.emit_instruction("STW R0, R1, #0");
+            }
         }
 
         // R0 has new value (which is also the return value)
@@ -1175,5 +1441,105 @@ mod tests {
         let result = compile(source, &CompileOptions::default()).unwrap();
         println!("{}", result);
         assert!(result.contains("TRAP x25"));
+    }
+
+    #[test]
+    fn test_register_allocation_simple() {
+        // Simple function with 2 locals, no calls -> should use registers
+        let source = r#"
+            int main() {
+                int a = 5;
+                int b = 10;
+                return a + b;
+            }
+        "#;
+        let result = compile(source, &CompileOptions::default()).unwrap();
+        println!("{}", result);
+        // Should use register allocation (no STW/LDW for locals)
+        assert!(result.contains("Using register allocation"));
+        // Variables should be in R1 and R2
+        assert!(result.contains("ADD R1, R0, #0")); // a = 5 -> R1
+        assert!(result.contains("ADD R2, R0, #0")); // b = 10 -> R2
+        // Should NOT have frame pointer setup for main with register alloc
+        assert!(!result.contains("ADD R5, R6, #0"));
+    }
+
+    #[test]
+    fn test_register_allocation_for_loop() {
+        // For loop with 2 locals (sum, i), no calls -> should use registers
+        let source = r#"
+            int main() {
+                int sum = 0;
+                for (int i = 0; i < 5; i++) {
+                    sum = sum + i;
+                }
+                return sum;
+            }
+        "#;
+        let result = compile(source, &CompileOptions::default()).unwrap();
+        println!("{}", result);
+        assert!(result.contains("Using register allocation"));
+        // i++ should be a simple register increment
+        assert!(result.contains("ADD R2, R2, #1")); // i++
+    }
+
+    #[test]
+    fn test_stack_allocation_with_calls() {
+        // Function with calls -> should use stack
+        let source = r#"
+            void helper() {}
+            int main() {
+                int x = 5;
+                helper();
+                return x;
+            }
+        "#;
+        let result = compile(source, &CompileOptions::default()).unwrap();
+        println!("{}", result);
+        // main has a call, so should NOT use register allocation
+        assert!(!result.contains("; Using register allocation for locals\nmain"));
+        // Should use stack for x
+        assert!(result.contains("STW R0, R5"));
+    }
+
+    #[test]
+    fn test_undefined_function_error() {
+        let source = r#"
+            int main() {
+                puts("Hello");
+                return 0;
+            }
+        "#;
+        let result = compile(source, &CompileOptions::default());
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("undefined function 'puts'"));
+        assert!(err.message.contains("#include"));
+    }
+
+    #[test]
+    fn test_undefined_variable_error() {
+        let source = r#"
+            int main() {
+                return x;
+            }
+        "#;
+        let result = compile(source, &CompileOptions::default());
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("undefined variable 'x'"));
+    }
+
+    #[test]
+    fn test_defined_function_works() {
+        let source = r#"
+            #include <lc3b-io.h>
+            int main() {
+                puts("Hello");
+                return 0;
+            }
+        "#;
+        let result = compile(source, &CompileOptions::default());
+        assert!(result.is_ok());
     }
 }
