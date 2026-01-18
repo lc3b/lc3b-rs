@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 
-import init, { WasmComputer, wasm_memory_size } from "lc3b";
+import init, { WasmComputer, wasm_memory_size, compile_c_to_assembly } from "lc3b";
 
 import ProgramCounter from "./ProgramCounter";
 import ConditionCodes from "./ConditionCodes";
@@ -21,11 +21,27 @@ ADD R3, R1, #5   ; R3 = R1 + 5
 ADD R4, R3, R1   ; R4 = R3 + R1
 `;
 
+const DEFAULT_C_CODE = `// LC-3b C Program
+// Example: Sum numbers 0 to 4
+
+int main() {
+    int sum = 0;
+    for (int i = 0; i < 5; i++) {
+        sum = sum + i;
+    }
+    return sum;
+}
+`;
+
 type Tab = "simulator" | "instructions" | "assembly" | "samples" | "about";
+type EditorMode = "assembly" | "c";
 
 function Computer() {
   const [activeTab, setActiveTab] = useState<Tab>("simulator");
+  const [editorMode, setEditorMode] = useState<EditorMode>("assembly");
   const [assembly, setAssembly] = useState(DEFAULT_ASSEMBLY);
+  const [cCode, setCCode] = useState(DEFAULT_C_CODE);
+  const [compileError, setCompileError] = useState<string | null>(null);
   const [wasmLoaded, setWasmLoaded] = useState(false);
   const [programLoaded, setProgramLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -78,6 +94,19 @@ function Computer() {
       setConsoleOutput(computer.console_output());
       setIsHalted(computer.is_halted());
       setWasmMemoryBytes(wasm_memory_size());
+    }
+  };
+
+  const handleCompileC = () => {
+    try {
+      const compiledAssembly = compile_c_to_assembly(cCode);
+      setAssembly(compiledAssembly);
+      setCompileError(null);
+      setEditorMode("assembly");
+      setProgramLoaded(false);
+      setLoadError(null);
+    } catch (e) {
+      setCompileError(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -189,9 +218,34 @@ function Computer() {
           {/* Editor Panel */}
           <div className="flex-1 flex flex-col p-6 bg-[var(--bg-primary)]">
             <div className="flex items-center justify-between mb-3">
-              <label className="text-sm text-[var(--text-muted)] uppercase tracking-wider font-semibold">
-                LC-3b Assembly
-              </label>
+              {/* Mode Toggle */}
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-md overflow-hidden border border-[var(--border-color)]">
+                  <button
+                    onClick={() => setEditorMode("c")}
+                    className={`px-3 py-1 text-sm font-medium transition-colors ${
+                      editorMode === "c"
+                        ? "bg-[var(--accent-primary)] text-[var(--bg-primary)]"
+                        : "bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    }`}
+                  >
+                    C
+                  </button>
+                  <button
+                    onClick={() => setEditorMode("assembly")}
+                    className={`px-3 py-1 text-sm font-medium transition-colors ${
+                      editorMode === "assembly"
+                        ? "bg-[var(--accent-primary)] text-[var(--bg-primary)]"
+                        : "bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    }`}
+                  >
+                    Assembly
+                  </button>
+                </div>
+                <span className="text-sm text-[var(--text-muted)] uppercase tracking-wider font-semibold ml-2">
+                  {editorMode === "c" ? "C Source" : "LC-3b Assembly"}
+                </span>
+              </div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <span
@@ -216,33 +270,70 @@ function Computer() {
                 )}
               </div>
             </div>
-            <textarea
-              className="input-field h-48 min-h-[120px] max-h-[400px] rounded-lg p-4 font-mono text-sm resize-y leading-relaxed"
-              value={assembly}
-              onChange={(e) => {
-                setAssembly(e.target.value);
-                setProgramLoaded(false);
-                setLoadError(null);
-              }}
-            />
+
+            {/* Editor textarea - shows C or Assembly based on mode */}
+            {editorMode === "c" ? (
+              <textarea
+                className="input-field h-48 min-h-[120px] max-h-[400px] rounded-lg p-4 font-mono text-sm resize-y leading-relaxed"
+                value={cCode}
+                onChange={(e) => {
+                  setCCode(e.target.value);
+                  setCompileError(null);
+                }}
+                placeholder="Enter C code here..."
+              />
+            ) : (
+              <textarea
+                className="input-field h-48 min-h-[120px] max-h-[400px] rounded-lg p-4 font-mono text-sm resize-y leading-relaxed"
+                value={assembly}
+                onChange={(e) => {
+                  setAssembly(e.target.value);
+                  setProgramLoaded(false);
+                  setLoadError(null);
+                }}
+                placeholder="Enter LC-3b assembly here..."
+              />
+            )}
+
+            {/* Buttons */}
             <div className="flex gap-4 mt-4">
-              <button
-                onClick={handleLoadProgram}
-                disabled={!wasmLoaded}
-                className="btn-primary px-6 py-3 rounded-md"
-              >
-                Assemble and Load to Memory
-              </button>
-              <button
-                onClick={handleNextInstruction}
-                disabled={!programLoaded || isHalted}
-                title={!programLoaded ? "No program loaded" : isHalted ? "Program halted" : undefined}
-                className="btn-secondary px-6 py-3 rounded-md"
-              >
-                Execute Next Instruction
-              </button>
+              {editorMode === "c" ? (
+                <button
+                  onClick={handleCompileC}
+                  disabled={!wasmLoaded}
+                  className="btn-primary px-6 py-3 rounded-md"
+                >
+                  Compile to Assembly →
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={handleLoadProgram}
+                    disabled={!wasmLoaded}
+                    className="btn-primary px-6 py-3 rounded-md"
+                  >
+                    Assemble and Load to Memory
+                  </button>
+                  <button
+                    onClick={handleNextInstruction}
+                    disabled={!programLoaded || isHalted}
+                    title={!programLoaded ? "No program loaded" : isHalted ? "Program halted" : undefined}
+                    className="btn-secondary px-6 py-3 rounded-md"
+                  >
+                    Execute Next Instruction
+                  </button>
+                </>
+              )}
             </div>
-            {loadError && (
+
+            {/* Error displays */}
+            {compileError && editorMode === "c" && (
+              <div className="mt-4 p-4 bg-[var(--accent-error)]/10 border-2 border-[var(--accent-error)] rounded-lg">
+                <div className="text-[var(--accent-error)] font-semibold text-sm mb-1">Compile Error</div>
+                <pre className="text-[var(--accent-error)] text-sm font-mono whitespace-pre-wrap opacity-80">{compileError}</pre>
+              </div>
+            )}
+            {loadError && editorMode === "assembly" && (
               <div className="mt-4 p-4 bg-[var(--accent-error)]/10 border-2 border-[var(--accent-error)] rounded-lg">
                 <div className="text-[var(--accent-error)] font-semibold text-sm mb-1">Assembly Error</div>
                 <pre className="text-[var(--accent-error)] text-sm font-mono whitespace-pre-wrap opacity-80">{loadError}</pre>

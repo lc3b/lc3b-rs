@@ -3,6 +3,9 @@ resolver = "2"
 members = [
     "lc3b",
     "lc3b-assembler",
+    "lc3b-c-ast",
+    "lc3b-c-compiler",
+    "lc3b-c-grammar",
     "lc3b-isa",
     "lc3b-web"
 ]

@@ -1,0 +1,10 @@
+[package]
+name = "lc3b-c-grammar"
+version = "0.1.0"
+edition = "2021"
+description = "C subset grammar parser for LC-3B code generation"
+license = "MIT"
+
+[dependencies]
+pest = "2"
+pest_derive = "2"

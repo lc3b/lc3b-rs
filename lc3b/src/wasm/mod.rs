@@ -1,11 +1,19 @@
 use wasm_bindgen::prelude::*;
 
 use crate::{BufferedIO, Computer, Program, UIObserver, USER_PROGRAM_START, IO};
+use lc3b_c_compiler::{compile as compile_c, CompileOptions};
 
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
     pub fn log(s: &str);
+}
+
+/// Compile C source code to LC-3b assembly
+#[wasm_bindgen]
+pub fn compile_c_to_assembly(source: &str) -> Result<String, String> {
+    let options = CompileOptions::default();
+    compile_c(source, &options).map_err(|e| e.to_string())
 }
 
 /// Returns the WASM linear memory size in bytes

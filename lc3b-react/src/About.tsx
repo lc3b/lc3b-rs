@@ -11,9 +11,7 @@ function About() {
           programming and computer organization concepts.
         </p>
         <p className="text-text-primary leading-relaxed mt-3">
-          Unlike traditional emulators, this implementation stores instructions directly in
-          memory as raw 16-bit words, just like real hardware. Programs are loaded at address
-          0x3000 and can be inspected in the memory viewer.
+          This web-based tool has an assembler and runtime. Binary data is loaded in to the computer's memory and you can step forward through instructions.
         </p>
       </section>
 

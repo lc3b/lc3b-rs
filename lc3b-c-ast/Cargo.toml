@@ -1,0 +1,10 @@
+[package]
+name = "lc3b-c-ast"
+version = "0.1.0"
+edition = "2021"
+description = "AST types and parser for LC-3B C subset"
+license = "MIT"
+
+[dependencies]
+lc3b-c-grammar = { version = "0.1", path = "../lc3b-c-grammar" }
+pest = "2"

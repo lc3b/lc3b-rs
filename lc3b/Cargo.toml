@@ -15,6 +15,7 @@ js-sys = "0.3"
 anyhow = "1"
 thiserror = "2"
 lc3b-assembler = { version = "0", path = "../lc3b-assembler" }
+lc3b-c-compiler = { version = "0.1", path = "../lc3b-c-compiler" }
 lc3b-isa = { version = "0", path = "../lc3b-isa" }
 
 [lib]
