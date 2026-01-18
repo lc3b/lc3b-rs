@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::*;
 
-use crate::{CallbacksRegistry, Computer, Program, USER_PROGRAM_START};
+use crate::{BufferedIO, Computer, Program, UIObserver, USER_PROGRAM_START, IO};
 
 #[wasm_bindgen]
 extern "C" {
@@ -17,148 +17,98 @@ pub fn parse_program(program: &str) {
     }
 }
 
-pub enum Callback {
-    JS(js_sys::Function),
+/// WASM-exposed computer wrapping Computer<BufferedIO, UIObserver>
+#[wasm_bindgen]
+pub struct WasmComputer {
+    inner: Computer<BufferedIO, UIObserver>,
 }
 
 #[wasm_bindgen]
-pub struct WasmCallbacksRegistry {
-    hello: js_sys::Function,
-}
-
-#[wasm_bindgen]
-impl WasmCallbacksRegistry {
-    pub fn new(hello: js_sys::Function) -> Self {
-        WasmCallbacksRegistry { hello }
-    }
-}
-
-/// Result type for computer creation - wraps either a Computer or an error message
-#[wasm_bindgen]
-pub struct ComputerResult {
-    computer: Option<Computer>,
-    error: Option<String>,
-}
-
-#[wasm_bindgen]
-impl ComputerResult {
-    pub fn is_ok(&self) -> bool {
-        self.computer.is_some()
-    }
-    
-    pub fn is_err(&self) -> bool {
-        self.error.is_some()
-    }
-    
-    pub fn error_message(&self) -> Option<String> {
-        self.error.clone()
-    }
-    
-    pub fn unwrap_computer(self) -> Computer {
-        self.computer.expect("Called unwrap_computer on an error result")
-    }
-}
-
-#[wasm_bindgen]
-pub fn new_computer(program: &str, callbacks: WasmCallbacksRegistry) -> ComputerResult {
-    match Program::from_assembly(program) {
-        Ok(program) => {
-            let words = program.to_words();
-            
-            let callbacks = CallbacksRegistry {
-                hello: Callback::JS(callbacks.hello),
-            };
-            
-            let mut computer = Computer::new(callbacks);
-            computer.load_program(&words, USER_PROGRAM_START);
-            
-            ComputerResult {
-                computer: Some(computer),
-                error: None,
-            }
-        }
-        Err(e) => {
-            ComputerResult {
-                computer: None,
-                error: Some(format!("{:?}", e)),
-            }
+impl WasmComputer {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self {
+            inner: Computer::with_observer(BufferedIO::new(), UIObserver::new()),
         }
     }
+
+    pub fn load_assembly(&mut self, program: &str) -> Result<(), String> {
+        let program = Program::from_assembly(program).map_err(|e| format!("{:?}", e))?;
+        let words = program.to_words();
+        self.inner.load_program(&words, USER_PROGRAM_START);
+        Ok(())
+    }
+
+    pub fn next_instruction(&mut self) {
+        self.inner.observer_mut().reset_instruction_state();
+        self.inner.next_instruction();
+    }
+
+    pub fn run(&mut self, max_instructions: usize) -> usize {
+        self.inner.run(max_instructions)
+    }
+
+    // --- State accessors ---
+
+    pub fn program_counter(&self) -> u16 {
+        self.inner.program_counter()
+    }
+
+    pub fn register(&self, index: u8) -> u16 {
+        self.inner.register(index)
+    }
+
+    pub fn condition_n(&self) -> bool {
+        self.inner.condition_n()
+    }
+
+    pub fn condition_z(&self) -> bool {
+        self.inner.condition_z()
+    }
+
+    pub fn condition_p(&self) -> bool {
+        self.inner.condition_p()
+    }
+
+    pub fn read_memory(&self, addr: u16) -> u16 {
+        self.inner.read_memory(addr)
+    }
+
+    // --- Observer state ---
+
+    pub fn last_modified_register(&self) -> i8 {
+        self.inner
+            .observer()
+            .last_modified_register()
+            .map(|r| r as i8)
+            .unwrap_or(-1)
+    }
+
+    // --- I/O state ---
+
+    pub fn console_output(&self) -> String {
+        self.inner.io().output().to_string()
+    }
+
+    pub fn clear_console(&mut self) {
+        self.inner.io_mut().clear_output();
+    }
+
+    pub fn is_halted(&self) -> bool {
+        self.inner.io().is_halted()
+    }
+
+    pub fn push_input(&mut self, ch: char) {
+        self.inner.io_mut().push_input(ch);
+    }
+
+    pub fn push_input_str(&mut self, s: &str) {
+        self.inner.io_mut().push_input_str(s);
+    }
 }
 
-#[wasm_bindgen]
-pub fn next_instruction(computer: &mut Computer) {
-    computer.next_instruction();
-}
-
-#[wasm_bindgen]
-pub fn program_counter(computer: &Computer) -> u16 {
-    computer.program_counter()
-}
-
-#[wasm_bindgen]
-pub fn register0(computer: &Computer) -> u16 {
-    computer.register0()
-}
-
-#[wasm_bindgen]
-pub fn register1(computer: &Computer) -> u16 {
-    computer.register1()
-}
-
-#[wasm_bindgen]
-pub fn register2(computer: &Computer) -> u16 {
-    computer.register2()
-}
-
-#[wasm_bindgen]
-pub fn register3(computer: &Computer) -> u16 {
-    computer.register3()
-}
-
-#[wasm_bindgen]
-pub fn register4(computer: &Computer) -> u16 {
-    computer.register4()
-}
-
-#[wasm_bindgen]
-pub fn register5(computer: &Computer) -> u16 {
-    computer.register5()
-}
-
-#[wasm_bindgen]
-pub fn register6(computer: &Computer) -> u16 {
-    computer.register6()
-}
-
-#[wasm_bindgen]
-pub fn register7(computer: &Computer) -> u16 {
-    computer.register7()
-}
-
-#[wasm_bindgen]
-pub fn read_memory(computer: &Computer, addr: u16) -> u16 {
-    computer.read_memory(addr)
-}
-
-#[wasm_bindgen]
-pub fn condition_n(computer: &Computer) -> bool {
-    computer.condition_n()
-}
-
-#[wasm_bindgen]
-pub fn condition_z(computer: &Computer) -> bool {
-    computer.condition_z()
-}
-
-#[wasm_bindgen]
-pub fn condition_p(computer: &Computer) -> bool {
-    computer.condition_p()
-}
-
-/// Returns the index (0-7) of the register modified by the last instruction,
-/// or -1 if no register was modified
-#[wasm_bindgen]
-pub fn last_modified_register(computer: &Computer) -> i8 {
-    computer.last_modified_register().map(|r| r as i8).unwrap_or(-1)
+impl Default for WasmComputer {
+    fn default() -> Self {
+        Self::new()
+    }
 }

@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, str::FromStr};
 
-use lc3b_isa::{AddInstruction, AndInstruction, Condition, Immediate5, Instruction, PCOffset9, PCOffset11, Register};
+use lc3b_isa::{AddInstruction, AndInstruction, Condition, Immediate5, Instruction, PCOffset9, PCOffset11, Register, TrapVect8};
 use pest::{
     iterators::{Pair, Pairs},
     Parser,
@@ -420,6 +420,65 @@ impl Assembler {
 
                 Instruction::Jsrr(base_reg)
             }
+            "TRAP" => {
+                let mut operands = inner.next().unwrap().into_inner();
+                let arg = operands.next().unwrap();
+                let vector = match arg.as_rule() {
+                    Rule::hex_literal => {
+                        let value = self.parse_hex_literal(&arg)?;
+                        if value > 0xFF {
+                            return Err(eyre::eyre!("TRAP vector {} out of range (0x00-0xFF)", value));
+                        }
+                        value as u8
+                    }
+                    Rule::literal => {
+                        let s = arg.as_str().strip_prefix('#').unwrap_or(arg.as_str());
+                        let value: u16 = s.parse().map_err(|e| eyre::eyre!("Invalid number '{}': {}", s, e))?;
+                        if value > 0xFF {
+                            return Err(eyre::eyre!("TRAP vector {} out of range (0x00-0xFF)", value));
+                        }
+                        value as u8
+                    }
+                    _ => return Err(eyre::eyre!("Expected trap vector, got {:?}", arg.as_rule())),
+                };
+                Instruction::Trap(TrapVect8::new(vector))
+            }
+            "LEA" => {
+                let mut operands = inner.next().unwrap().into_inner();
+                let arg_one = operands.next().unwrap().as_str();
+                let dst_reg = Register::from_str(arg_one)?;
+
+                let offset_arg = operands.next().unwrap();
+                let offset_value = self.resolve_label_or_offset(&offset_arg)?;
+
+                // LEA uses LSHF(SEXT(offset), 1) in hardware, so we divide by 2
+                // to get the stored offset value
+                if offset_value % 2 != 0 {
+                    return Err(eyre::eyre!(
+                        "LEA target must be word-aligned (offset {} is not even)",
+                        offset_value
+                    ));
+                }
+                let stored_offset = offset_value / 2;
+
+                // Check range for PCOffset9
+                if stored_offset < -256 || stored_offset > 255 {
+                    return Err(eyre::eyre!(
+                        "LEA offset {} out of range (-256 to 255)",
+                        stored_offset
+                    ));
+                }
+
+                let offset = PCOffset9::new(stored_offset);
+                Instruction::Lea(dst_reg, offset)
+            }
+            // Trap aliases
+            "GETC" => Instruction::Trap(TrapVect8::new(0x20)),
+            "OUT" => Instruction::Trap(TrapVect8::new(0x21)),
+            "PUTS" => Instruction::Trap(TrapVect8::new(0x22)),
+            "IN" => Instruction::Trap(TrapVect8::new(0x23)),
+            "PUTSP" => Instruction::Trap(TrapVect8::new(0x24)),
+            "HALT" => Instruction::Trap(TrapVect8::new(0x25)),
             other => return Err(eyre::eyre!("unhandled opcode {:#?}", other)),
         };
 

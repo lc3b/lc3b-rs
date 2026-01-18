@@ -479,4 +479,14 @@ pub struct PCOffset6(u8);
 pub struct Bit(bool);
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub struct TrapVect8(u8);
+pub struct TrapVect8(pub u8);
+
+impl TrapVect8 {
+    pub fn new(value: u8) -> Self {
+        TrapVect8(value)
+    }
+
+    pub fn value(&self) -> u8 {
+        self.0
+    }
+}

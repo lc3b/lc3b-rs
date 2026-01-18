@@ -1,32 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 
-import init, {
-  WasmCallbacksRegistry,
-  Computer as WasmComputer,
-  ComputerResult,
-  new_computer,
-  next_instruction,
-  program_counter,
-  register0,
-  register1,
-  register2,
-  register3,
-  register4,
-  register5,
-  register6,
-  register7,
-  read_memory,
-  condition_n,
-  condition_z,
-  condition_p,
-  last_modified_register,
-} from "lc3b";
+import init, { WasmComputer } from "lc3b";
 
 import ProgramCounter from "./ProgramCounter";
 import ConditionCodes from "./ConditionCodes";
 import RegisterSet from "./RegisterSet";
 import MemoryViewer from "./MemoryViewer";
-import DebugLog from "./DebugLog";
+import Console from "./Console";
 import About from "./About";
 import Instructions from "./Instructions";
 import Assembly from "./Assembly";
@@ -63,6 +43,8 @@ function Computer() {
     r7: 0,
   });
   const [modifiedRegister, setModifiedRegister] = useState<number | null>(null);
+  const [consoleOutput, setConsoleOutput] = useState("");
+  const [isHalted, setIsHalted] = useState(false);
 
   const computerRef = useRef<WasmComputer | null>(null);
 
@@ -73,61 +55,64 @@ function Computer() {
   }, []);
 
   const updateState = () => {
-    if (computerRef.current) {
-      setPc(program_counter(computerRef.current));
+    const computer = computerRef.current;
+    if (computer) {
+      setPc(computer.program_counter());
       setConditions({
-        n: condition_n(computerRef.current),
-        z: condition_z(computerRef.current),
-        p: condition_p(computerRef.current),
+        n: computer.condition_n(),
+        z: computer.condition_z(),
+        p: computer.condition_p(),
       });
       setRegisters({
-        r0: register0(computerRef.current),
-        r1: register1(computerRef.current),
-        r2: register2(computerRef.current),
-        r3: register3(computerRef.current),
-        r4: register4(computerRef.current),
-        r5: register5(computerRef.current),
-        r6: register6(computerRef.current),
-        r7: register7(computerRef.current),
+        r0: computer.register(0),
+        r1: computer.register(1),
+        r2: computer.register(2),
+        r3: computer.register(3),
+        r4: computer.register(4),
+        r5: computer.register(5),
+        r6: computer.register(6),
+        r7: computer.register(7),
       });
+      setConsoleOutput(computer.console_output());
+      setIsHalted(computer.is_halted());
     }
   };
 
   const handleLoadProgram = () => {
-    const callbacks = WasmCallbacksRegistry.new(() => {});
-    const result: ComputerResult = new_computer(assembly, callbacks);
-    
-    if (result.is_err()) {
-      const errorMsg = result.error_message();
-      setLoadError(errorMsg ?? "Unknown error");
+    try {
+      const computer = new WasmComputer();
+      computer.load_assembly(assembly);
+      computerRef.current = computer;
+      setLoadError(null);
+      setInstructionCount(0);
+      setProgramLoaded(true);
+      setConsoleOutput("");
+      setIsHalted(false);
+      updateState();
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : String(e));
       setProgramLoaded(false);
       computerRef.current = null;
-      return;
     }
-    
-    computerRef.current = result.unwrap_computer();
-    setLoadError(null);
-    setInstructionCount(0);
-    setProgramLoaded(true);
-    updateState();
   };
 
   const handleNextInstruction = () => {
-    if (computerRef.current) {
-      next_instruction(computerRef.current);
+    const computer = computerRef.current;
+    if (computer && !computer.is_halted()) {
+      computer.next_instruction();
       setInstructionCount((prev) => prev + 1);
-      
+
       // Get the last modified register before updating state
-      const modReg = last_modified_register(computerRef.current);
+      const modReg = computer.last_modified_register();
       setModifiedRegister(modReg >= 0 ? modReg : null);
-      
+
       updateState();
     }
   };
 
   const handleReadMemory = (addr: number): number => {
     if (computerRef.current) {
-      return read_memory(computerRef.current, addr);
+      return computerRef.current.read_memory(addr);
     }
     return 0;
   };
@@ -200,14 +185,18 @@ function Computer() {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <span
-                    className={`status-dot ${programLoaded ? "ready" : "not-ready"}`}
+                    className={`status-dot ${programLoaded ? (isHalted ? "halted" : "ready") : "not-ready"}`}
                   />
                   <span
                     className={`text-sm font-medium ${
-                      programLoaded ? "text-[var(--accent-success)]" : "text-[var(--text-muted)]"
+                      programLoaded
+                        ? isHalted
+                          ? "text-[var(--accent-warning)]"
+                          : "text-[var(--accent-success)]"
+                        : "text-[var(--text-muted)]"
                     }`}
                   >
-                    {programLoaded ? "Ready" : "Not Loaded"}
+                    {programLoaded ? (isHalted ? "Halted" : "Ready") : "Not Loaded"}
                   </span>
                 </div>
                 {programLoaded && (
@@ -236,8 +225,8 @@ function Computer() {
               </button>
               <button
                 onClick={handleNextInstruction}
-                disabled={!programLoaded}
-                title={!programLoaded ? "No program loaded" : undefined}
+                disabled={!programLoaded || isHalted}
+                title={!programLoaded ? "No program loaded" : isHalted ? "Program halted" : undefined}
                 className="btn-secondary px-6 py-3 rounded-md"
               >
                 Execute Next Instruction
@@ -249,6 +238,8 @@ function Computer() {
                 <pre className="text-[var(--accent-error)] text-sm font-mono whitespace-pre-wrap opacity-80">{loadError}</pre>
               </div>
             )}
+            {/* Console Output */}
+            {programLoaded && <Console output={consoleOutput} isHalted={isHalted} />}
           </div>
 
           {/* Computer Panel */}
@@ -261,7 +252,6 @@ function Computer() {
               {programLoaded && (
                 <MemoryViewer programCounter={pc} readMemory={handleReadMemory} />
               )}
-              <DebugLog />
             </div>
           </div>
         </div>

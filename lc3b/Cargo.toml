@@ -18,7 +18,7 @@ lc3b-assembler = { version = "0", path = "../lc3b-assembler" }
 lc3b-isa = { version = "0", path = "../lc3b-isa" }
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dev-dependencies]
 eyre = "0"

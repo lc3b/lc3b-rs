@@ -1,91 +1,60 @@
 use lc3b_isa::{AddInstruction, AndInstruction, Condition, Instruction, PCOffset9, PCOffset11, Register};
-use wasm_bindgen::prelude::*;
 
-use crate::{wasm::log, CallbacksRegistry, Memory, USER_PROGRAM_START};
+use crate::{Memory, Observer, IO, USER_PROGRAM_START};
 
-#[wasm_bindgen]
-#[allow(dead_code)]
-pub struct Computer {
+pub struct Computer<I: IO, O: Observer = ()> {
     program_counter: u16,
     condition: Condition,
-    callbacks: CallbacksRegistry,
     registers: [u16; 8],
     memory: Memory,
-    /// Tracks which register was modified by the last instruction (0-7), or None
-    last_modified_register: Option<u8>,
+    io: I,
+    observer: O,
 }
 
-impl Computer {
-    pub fn new(callbacks: CallbacksRegistry) -> Self {
+impl<I: IO> Computer<I, ()> {
+    /// Create computer with I/O but no observer
+    pub fn new(io: I) -> Self {
+        Self::with_observer(io, ())
+    }
+}
+
+impl<I: IO, O: Observer> Computer<I, O> {
+    /// Create computer with I/O and observer
+    pub fn with_observer(io: I, observer: O) -> Self {
         Computer {
             program_counter: USER_PROGRAM_START,
             condition: Condition::default(),
-            callbacks,
             registers: [0u16; 8],
             memory: Memory::default(),
-            last_modified_register: None,
+            io,
+            observer,
         }
     }
 
-    /// Load a program (as encoded u16 words) into memory at the specified address
-    pub fn load_program(&mut self, words: &[u16], start_addr: u16) {
-        self.memory.load_words(start_addr, words);
-        self.program_counter = start_addr;
+    // --- Accessors ---
+
+    pub fn io(&self) -> &I {
+        &self.io
     }
 
-    pub fn next_instruction(&mut self) {
-        // Clear last modified register before executing new instruction
-        self.last_modified_register = None;
+    pub fn io_mut(&mut self) -> &mut I {
+        &mut self.io
+    }
 
-        let instruction = self.fetch_instruction();
+    pub fn observer(&self) -> &O {
+        &self.observer
+    }
 
-        match instruction {
-            Ok(inst) => {
-                self.execute(inst);
-                self.program_counter = self.program_counter.wrapping_add(1);
-            }
-            Err(e) => {
-                log(&format!("Decode error: {}", e));
-            }
-        }
-
-        self.callbacks.call_hello(self.program_counter as usize);
+    pub fn observer_mut(&mut self) -> &mut O {
+        &mut self.observer
     }
 
     pub fn program_counter(&self) -> u16 {
         self.program_counter
     }
 
-    pub fn register0(&self) -> u16 {
-        self.registers[0]
-    }
-
-    pub fn register1(&self) -> u16 {
-        self.registers[1]
-    }
-
-    pub fn register2(&self) -> u16 {
-        self.registers[2]
-    }
-
-    pub fn register3(&self) -> u16 {
-        self.registers[3]
-    }
-
-    pub fn register4(&self) -> u16 {
-        self.registers[4]
-    }
-
-    pub fn register5(&self) -> u16 {
-        self.registers[5]
-    }
-
-    pub fn register6(&self) -> u16 {
-        self.registers[6]
-    }
-
-    pub fn register7(&self) -> u16 {
-        self.registers[7]
+    pub fn condition(&self) -> Condition {
+        self.condition
     }
 
     pub fn condition_n(&self) -> bool {
@@ -100,24 +69,104 @@ impl Computer {
         self.condition.p
     }
 
-    /// Returns the index (0-7) of the register modified by the last instruction, if any
-    pub fn last_modified_register(&self) -> Option<u8> {
-        self.last_modified_register
+    pub fn register(&self, index: u8) -> u16 {
+        self.registers[index as usize]
     }
 
-    /// Read a word from memory
+    pub fn registers(&self) -> &[u16; 8] {
+        &self.registers
+    }
+
+    // --- Memory ---
+
+    pub fn load_program(&mut self, words: &[u16], start_addr: u16) {
+        self.memory.load_words(start_addr, words);
+        let old_pc = self.program_counter;
+        self.program_counter = start_addr;
+        self.observer.on_pc_change(old_pc, start_addr);
+    }
+
     pub fn read_memory(&self, addr: u16) -> u16 {
         self.memory.read_word(addr)
     }
 
-    /// Fetch the instruction at the current PC from memory and decode it
-    fn fetch_instruction(&self) -> Result<Instruction, lc3b_isa::DecodeError> {
-        let word = self.memory.read_word(self.program_counter);
-        Instruction::try_from(word)
+    pub fn write_memory(&mut self, addr: u16, value: u16) {
+        let old = self.memory.read_word(addr);
+        self.memory.write_word(addr, value);
+        self.observer.on_memory_write(addr, old, value);
+    }
+
+    // --- Register operations (with observer notifications) ---
+
+    fn load_register(&self, register: Register) -> u16 {
+        self.registers[register.to_index()]
+    }
+
+    fn store_register(&mut self, register: Register, value: u16) {
+        let index = register.to_index();
+        let old = self.registers[index];
+        self.registers[index] = value;
+        self.observer.on_register_write(index as u8, old, value);
+    }
+
+    fn set_condition_codes(&mut self, value: u16) {
+        let signed_value = value as i16;
+        let new_cond = Condition {
+            n: signed_value < 0,
+            z: signed_value == 0,
+            p: signed_value > 0,
+        };
+        if new_cond != self.condition {
+            self.condition = new_cond;
+            self.observer.on_condition_change(new_cond);
+        }
+    }
+
+    fn set_pc(&mut self, new_pc: u16) {
+        let old_pc = self.program_counter;
+        self.program_counter = new_pc;
+        if old_pc != new_pc {
+            self.observer.on_pc_change(old_pc, new_pc);
+        }
+    }
+
+    // --- Execution ---
+
+    pub fn next_instruction(&mut self) {
+        if self.io.is_halted() {
+            return;
+        }
+
+        let pc = self.program_counter;
+        let word = self.memory.read_word(pc);
+
+        match Instruction::try_from(word) {
+            Ok(inst) => {
+                self.observer.on_instruction_start(pc, &inst);
+                self.execute(inst);
+                self.observer.on_instruction_end(pc, &inst);
+
+                // Increment PC
+                self.set_pc(self.program_counter.wrapping_add(1));
+            }
+            Err(e) => {
+                eprintln!("Decode error at {:#06x}: {}", pc, e);
+            }
+        }
+    }
+
+    /// Run until halted or max_instructions reached
+    pub fn run(&mut self, max_instructions: usize) -> usize {
+        let mut count = 0;
+        while !self.io.is_halted() && count < max_instructions {
+            self.next_instruction();
+            count += 1;
+        }
+        count
     }
 
     #[allow(unused_variables)]
-    pub fn execute(&mut self, instruction: Instruction) {
+    fn execute(&mut self, instruction: Instruction) {
         match instruction {
             Instruction::AddInstruction(add_instruction) => {
                 self.perform_add_instruction(add_instruction);
@@ -138,7 +187,9 @@ impl Computer {
             Instruction::Ldb(register, register1, pcoffset6) => todo!(),
             Instruction::Ldi(register, register1, pcoffset6) => todo!(),
             Instruction::Ldr(register, register1, pcoffset6) => todo!(),
-            Instruction::Lea(register, pcoffset9) => todo!(),
+            Instruction::Lea(dr, pcoffset9) => {
+                self.perform_lea_instruction(dr, pcoffset9);
+            }
             Instruction::Not(dr, sr) => {
                 self.perform_not_instruction(dr, sr);
             }
@@ -148,29 +199,13 @@ impl Computer {
             Instruction::Stb(register, register1, pcoffset6) => todo!(),
             Instruction::Sti(register, register1, pcoffset6) => todo!(),
             Instruction::Str(register, register1, pcoffset6) => todo!(),
-            Instruction::Trap(trap_vect8) => todo!(),
+            Instruction::Trap(trap_vect8) => {
+                self.perform_trap(trap_vect8.value());
+            }
         }
     }
 
-    pub fn load_register(&self, register: Register) -> u16 {
-        let index = register.to_index();
-        self.registers[index]
-    }
-
-    pub fn store_register(&mut self, register: Register, value: u16) {
-        let index = register.to_index();
-        self.registers[index] = value;
-        self.last_modified_register = Some(index as u8);
-    }
-
-    /// Update condition codes based on a value (typically the result stored in DR)
-    fn set_condition_codes(&mut self, value: u16) {
-        // Interpret as signed 16-bit
-        let signed_value = value as i16;
-        self.condition.n = signed_value < 0;
-        self.condition.z = signed_value == 0;
-        self.condition.p = signed_value > 0;
-    }
+    // --- Instruction implementations ---
 
     pub fn perform_add_instruction(&mut self, add_instruction: AddInstruction) {
         match add_instruction {
@@ -262,15 +297,93 @@ impl Computer {
     pub fn perform_jsrr_instruction(&mut self, base: Register) {
         // Save the return address (PC+1) in R7
         let return_addr = self.program_counter.wrapping_add(1);
-        
+
         // Get the target address from the base register BEFORE we modify R7
         // (in case base is R7)
         let target = self.load_register(base);
-        
+
         self.store_register(Register::Register7, return_addr);
 
         // Jump to address in base register
         // Since next_instruction adds 1 after execute, we set PC = target - 1
         self.program_counter = target.wrapping_sub(1);
+    }
+
+    pub fn perform_lea_instruction(&mut self, dr: Register, offset: PCOffset9) {
+        // LEA: DR = PC + 1 + LSHF(SEXT(offset), 1)
+        // The +1 is because PC points to current instruction, and offset is relative to PC+1
+        // Since next_instruction will increment PC after execute, current PC is the instruction address
+        let pc_plus_1 = self.program_counter.wrapping_add(1);
+        let signed_offset = offset.sign_extend();
+        let shifted_offset = (signed_offset << 1) as u16; // LSHF by 1
+        let result = pc_plus_1.wrapping_add(shifted_offset);
+        self.store_register(dr, result);
+        self.set_condition_codes(result);
+    }
+
+    // --- TRAP implementation ---
+
+    fn perform_trap(&mut self, vector: u8) {
+        match vector {
+            0x20 => {
+                // GETC - read character into R0
+                if let Some(ch) = self.io.read_char() {
+                    self.store_register(Register::Register0, ch as u16);
+                }
+            }
+            0x21 => {
+                // OUT - write character from R0
+                let ch = (self.registers[0] & 0xFF) as u8 as char;
+                self.io.write_char(ch);
+            }
+            0x22 => {
+                // PUTS - write null-terminated string starting at address in R0
+                let mut addr = self.registers[0];
+                loop {
+                    let word = self.memory.read_word(addr);
+                    if word == 0 {
+                        break;
+                    }
+                    self.io.write_char((word & 0xFF) as u8 as char);
+                    addr = addr.wrapping_add(1);
+                }
+            }
+            0x23 => {
+                // IN - prompt and read character with echo
+                if let Some(ch) = self.io.read_char_with_echo() {
+                    self.store_register(Register::Register0, ch as u16);
+                }
+            }
+            0x24 => {
+                // PUTSP - write packed string (2 chars per word) starting at address in R0
+                let mut addr = self.registers[0];
+                loop {
+                    let word = self.memory.read_word(addr);
+                    if word == 0 {
+                        break;
+                    }
+                    // Low byte first
+                    let ch1 = (word & 0xFF) as u8 as char;
+                    if ch1 == '\0' {
+                        break;
+                    }
+                    self.io.write_char(ch1);
+                    // High byte second
+                    let ch2 = ((word >> 8) & 0xFF) as u8 as char;
+                    if ch2 == '\0' {
+                        break;
+                    }
+                    self.io.write_char(ch2);
+                    addr = addr.wrapping_add(1);
+                }
+            }
+            0x25 => {
+                // HALT
+                self.io.halt();
+            }
+            _ => {
+                // Unknown trap vector - could log or ignore
+            }
+        }
     }
 }

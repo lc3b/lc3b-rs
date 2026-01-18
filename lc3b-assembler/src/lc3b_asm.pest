@@ -73,7 +73,7 @@ empty_line = {
 }
 
 instruction = {
-    opcode ~ ws+ ~ operands
+    opcode ~ (ws+ ~ operands)?
 }
 
 opcode = {

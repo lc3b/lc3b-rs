@@ -77,4 +77,63 @@ negate:
 end:
     ADD R0, R0, #0   ; End of program`,
   },
+  {
+    title: "Hello World (TRAP)",
+    description: "Demonstrates LEA and TRAP instructions for console output using PUTS and HALT",
+    code: `; Hello World Example
+; Uses TRAP to print a string to the console
+
+.ORIG x3000
+
+; Load address of string into R0 using LEA
+LEA R0, hello    ; R0 = address of hello string
+
+; Print the string
+PUTS             ; TRAP x22 - print null-terminated string at R0
+
+; Halt the program
+HALT             ; TRAP x25 - stop execution
+
+; String data
+hello:
+.STRINGZ "Hello, LC-3b!"
+
+.END`,
+  },
+  {
+    title: "Character Output (TRAP)",
+    description: "Demonstrates OUT trap to print individual characters",
+    code: `; Character Output Example
+; Uses OUT (TRAP x21) to print characters one at a time
+
+.ORIG x3000
+
+; Print 'H'
+ADD R0, R0, #8    ; R0 = 8
+ADD R0, R0, #8    ; R0 = 16
+ADD R0, R0, #8    ; R0 = 24
+ADD R0, R0, #8    ; R0 = 32
+ADD R0, R0, #8    ; R0 = 40
+ADD R0, R0, #8    ; R0 = 48
+ADD R0, R0, #8    ; R0 = 56
+ADD R0, R0, #8    ; R0 = 64
+ADD R0, R0, #8    ; R0 = 72 = 'H'
+OUT              ; Print character in R0
+
+; Print 'i'
+ADD R0, R0, #8    ; R0 = 80
+ADD R0, R0, #8    ; R0 = 88
+ADD R0, R0, #8    ; R0 = 96
+ADD R0, R0, #9    ; R0 = 105 = 'i'
+OUT              ; Print character in R0
+
+; Print newline
+AND R0, R0, #0   ; R0 = 0
+ADD R0, R0, #10  ; R0 = 10 = newline
+OUT              ; Print newline
+
+HALT             ; Stop execution
+
+.END`,
+  },
 ];

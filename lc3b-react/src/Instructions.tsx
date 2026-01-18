@@ -144,7 +144,7 @@ const instructions: InstructionInfo[] = [
   },
   {
     name: "LEA",
-    supported: false,
+    supported: true,
     summary: "Load effective address. Computes address without accessing memory.",
     variants: [
       {
@@ -260,7 +260,7 @@ const instructions: InstructionInfo[] = [
   },
   {
     name: "TRAP",
-    supported: false,
+    supported: true,
     summary: "System call. Invokes operating system service routine.",
     variants: [
       {
