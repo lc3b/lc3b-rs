@@ -8,3 +8,6 @@ license = "MIT"
 [dependencies]
 lc3b-c-grammar = { version = "0.1", path = "../lc3b-c-grammar" }
 lc3b-c-ast = { version = "0.1", path = "../lc3b-c-ast" }
+
+[dev-dependencies]
+lc3b-assembler = { version = "0.1", path = "../lc3b-assembler" }

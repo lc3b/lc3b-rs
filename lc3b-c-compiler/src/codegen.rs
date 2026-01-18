@@ -124,6 +124,8 @@ struct Compiler {
     defined_functions: std::collections::HashSet<String>,
     /// Set of defined global variable names
     defined_globals: std::collections::HashSet<String>,
+    /// Count of words emitted (for alignment)
+    word_count: usize,
 }
 
 enum DataItem {
@@ -239,6 +241,7 @@ impl Compiler {
             current_function: String::new(),
             defined_functions: std::collections::HashSet::new(),
             defined_globals: std::collections::HashSet::new(),
+            word_count: 0,
         }
     }
 
@@ -259,6 +262,7 @@ impl Compiler {
 
     fn emit_instruction(&mut self, instr: &str) {
         self.emit(&format!("    {}", instr));
+        self.word_count += 1;
     }
 
     fn new_label(&mut self, prefix: &str) -> String {
@@ -324,6 +328,12 @@ impl Compiler {
         if !self.data_section.is_empty() || !globals.is_empty() {
             self.emit("");
             self.emit_comment("Data section");
+            
+            // Ensure data section starts at even word boundary for LEA alignment
+            if self.word_count % 2 != 0 {
+                self.emit("    .FILL x0000  ; padding for alignment");
+                self.word_count += 1;
+            }
             
             for global in globals {
                 self.compile_global_declaration(global)?;
@@ -1541,5 +1551,28 @@ mod tests {
         "#;
         let result = compile(source, &CompileOptions::default());
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_hello_world_assembles() {
+        // This is the default C example from the UI
+        let source = r#"#include <lc3b-io.h>
+
+// Hello World in C for LC-3b
+
+int main() {
+    puts("Hello, LC-3b!");
+    return 0;
+}
+"#;
+        let asm = compile(source, &CompileOptions::default()).unwrap();
+        println!("Generated assembly:\n{}", asm);
+        
+        // Now try to assemble it
+        let assembled = lc3b_assembler::assemble(&asm);
+        if let Err(e) = &assembled {
+            panic!("Assembly failed: {}\n\nGenerated assembly:\n{}", e, asm);
+        }
+        assert!(assembled.is_ok());
     }
 }
