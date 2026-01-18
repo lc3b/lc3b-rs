@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 
-import init, { WasmComputer } from "lc3b";
+import init, { WasmComputer, wasm_memory_size } from "lc3b";
 
 import ProgramCounter from "./ProgramCounter";
 import ConditionCodes from "./ConditionCodes";
@@ -45,12 +45,14 @@ function Computer() {
   const [modifiedRegister, setModifiedRegister] = useState<number | null>(null);
   const [consoleOutput, setConsoleOutput] = useState("");
   const [isHalted, setIsHalted] = useState(false);
+  const [wasmMemoryBytes, setWasmMemoryBytes] = useState<number | null>(null);
 
   const computerRef = useRef<WasmComputer | null>(null);
 
   useEffect(() => {
     init().then(() => {
       setWasmLoaded(true);
+      setWasmMemoryBytes(wasm_memory_size());
     });
   }, []);
 
@@ -75,6 +77,7 @@ function Computer() {
       });
       setConsoleOutput(computer.console_output());
       setIsHalted(computer.is_halted());
+      setWasmMemoryBytes(wasm_memory_size());
     }
   };
 
@@ -130,10 +133,17 @@ function Computer() {
       <header className="relative bg-[var(--bg-secondary)] px-6 py-4 border-b-2 border-[var(--border-contrast)]">
         <div className="absolute inset-0 dither-pattern opacity-30 pointer-events-none" />
         <div className="relative flex items-center justify-between">
-          <h1 className="text-2xl text-[var(--accent-primary)] font-bold flex items-center gap-3">
-            <img src="/favicon.svg" alt="LC-3b" className="w-8 h-8" />
-            {wasmLoaded ? "LC-3b Simulator" : <span className="loading">LC-3b (loading...)</span>}
-          </h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl text-[var(--accent-primary)] font-bold flex items-center gap-3">
+              <img src="/favicon.svg" alt="LC-3b" className="w-8 h-8" />
+              {wasmLoaded ? "LC-3b Simulator" : <span className="loading">LC-3b (loading...)</span>}
+            </h1>
+            {wasmMemoryBytes !== null && (
+              <span className="text-xs text-[var(--text-muted)] font-mono">
+                WASM: {(wasmMemoryBytes / 1024 / 1024).toFixed(2)} MB
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-4">
             <nav className="flex gap-1">
               <button

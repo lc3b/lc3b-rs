@@ -8,6 +8,18 @@ extern "C" {
     pub fn log(s: &str);
 }
 
+/// Returns the WASM linear memory size in bytes
+#[wasm_bindgen]
+pub fn wasm_memory_size() -> usize {
+    wasm_bindgen::memory()
+        .dyn_into::<js_sys::WebAssembly::Memory>()
+        .unwrap()
+        .buffer()
+        .dyn_into::<js_sys::ArrayBuffer>()
+        .unwrap()
+        .byte_length() as usize
+}
+
 #[wasm_bindgen]
 pub fn parse_program(program: &str) {
     let program = Program::from_assembly(program);
