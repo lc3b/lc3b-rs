@@ -30,6 +30,10 @@ fn build_top_level_item(pair: Pair<Rule>) -> Result<Option<TopLevelItem>, String
             let inner = pair.into_inner().next().unwrap();
             build_top_level_item(inner)
         }
+        Rule::include_directive => {
+            let path = pair.into_inner().next().unwrap().as_str().to_string();
+            Ok(Some(TopLevelItem::Include(path)))
+        }
         Rule::function_definition => {
             let func = build_function(pair)?;
             Ok(Some(TopLevelItem::Function(func)))

@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::*;
 
 use crate::{BufferedIO, Computer, Program, UIObserver, USER_PROGRAM_START, IO};
-use lc3b_c_compiler::{compile as compile_c, CompileOptions};
+use lc3b_c_compiler::{compile as compile_c, available_headers, CompileOptions};
 
 #[wasm_bindgen]
 extern "C" {
@@ -14,6 +14,21 @@ extern "C" {
 pub fn compile_c_to_assembly(source: &str) -> Result<String, String> {
     let options = CompileOptions::default();
     compile_c(source, &options).map_err(|e| e.to_string())
+}
+
+/// Get the list of available C header file names
+#[wasm_bindgen]
+pub fn get_available_headers() -> Vec<String> {
+    available_headers().iter().map(|h| h.name.to_string()).collect()
+}
+
+/// Get the contents of a C header file by name
+#[wasm_bindgen]
+pub fn get_header_contents(name: &str) -> Option<String> {
+    available_headers()
+        .iter()
+        .find(|h| h.name == name)
+        .map(|h| h.contents.to_string())
 }
 
 /// Returns the WASM linear memory size in bytes

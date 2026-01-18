@@ -13,7 +13,16 @@ program = {
 }
 
 top_level_item = {
-    function_definition | global_declaration
+    include_directive | function_definition | global_declaration
+}
+
+// Include directive
+include_directive = {
+    "#include" ~ "<" ~ include_path ~ ">"
+}
+
+include_path = @{
+    (ASCII_ALPHANUMERIC | "-" | "_" | ".")+
 }
 
 // Function definitions

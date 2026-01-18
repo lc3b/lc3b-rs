@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 
-import init, { WasmComputer, wasm_memory_size, compile_c_to_assembly } from "lc3b";
+import init, { WasmComputer, wasm_memory_size, compile_c_to_assembly, get_available_headers, get_header_contents } from "lc3b";
 
 import ProgramCounter from "./ProgramCounter";
 import ConditionCodes from "./ConditionCodes";
@@ -21,15 +21,13 @@ ADD R3, R1, #5   ; R3 = R1 + 5
 ADD R4, R3, R1   ; R4 = R3 + R1
 `;
 
-const DEFAULT_C_CODE = `// LC-3b C Program
-// Example: Sum numbers 0 to 4
+const DEFAULT_C_CODE = `#include <lc3b-io.h>
+
+// Hello World in C for LC-3b
 
 int main() {
-    int sum = 0;
-    for (int i = 0; i < 5; i++) {
-        sum = sum + i;
-    }
-    return sum;
+    puts("Hello, LC-3b!");
+    return 0;
 }
 `;
 
@@ -42,6 +40,8 @@ function Computer() {
   const [assembly, setAssembly] = useState(DEFAULT_ASSEMBLY);
   const [cCode, setCCode] = useState(DEFAULT_C_CODE);
   const [compileError, setCompileError] = useState<string | null>(null);
+  const [availableHeaders, setAvailableHeaders] = useState<string[]>([]);
+  const [expandedHeader, setExpandedHeader] = useState<string | null>(null);
   const [wasmLoaded, setWasmLoaded] = useState(false);
   const [programLoaded, setProgramLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -69,6 +69,7 @@ function Computer() {
     init().then(() => {
       setWasmLoaded(true);
       setWasmMemoryBytes(wasm_memory_size());
+      setAvailableHeaders(get_available_headers());
     });
   }, []);
 
@@ -293,6 +294,35 @@ function Computer() {
                 }}
                 placeholder="Enter LC-3b assembly here..."
               />
+            )}
+
+            {/* Available Headers - only show in C mode */}
+            {editorMode === "c" && availableHeaders.length > 0 && (
+              <div className="mt-4">
+                <div className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-semibold mb-2">
+                  Available Headers
+                </div>
+                <div className="space-y-2">
+                  {availableHeaders.map((header) => (
+                    <div key={header} className="border border-[var(--border-color)] rounded-lg overflow-hidden">
+                      <button
+                        onClick={() => setExpandedHeader(expandedHeader === header ? null : header)}
+                        className="w-full px-3 py-2 text-left text-sm font-mono bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-between"
+                      >
+                        <span className="text-[var(--accent-primary)]">&lt;{header}&gt;</span>
+                        <span className="text-[var(--text-muted)]">
+                          {expandedHeader === header ? "▼" : "▶"}
+                        </span>
+                      </button>
+                      {expandedHeader === header && (
+                        <pre className="p-3 text-xs font-mono bg-[var(--bg-primary)] text-[var(--text-secondary)] overflow-x-auto max-h-64 overflow-y-auto">
+                          {get_header_contents(header) || "// Header not found"}
+                        </pre>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
             {/* Buttons */}

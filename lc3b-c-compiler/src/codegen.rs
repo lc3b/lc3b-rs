@@ -1,5 +1,6 @@
 //! Code generation: AST to LC-3B assembly text
 
+use crate::headers::get_header;
 use lc3b_c_ast::*;
 use std::collections::HashMap;
 
@@ -37,16 +38,59 @@ impl std::error::Error for CompileError {}
 
 /// Compile C source to LC-3B assembly text
 pub fn compile(source: &str, options: &CompileOptions) -> Result<String, CompileError> {
+    // First pass: parse the source to find includes
     let pairs = lc3b_c_grammar::parse(source)
         .map_err(|e| CompileError { message: e.to_string() })?;
     
     let ast = lc3b_c_ast::build_ast(pairs)
         .map_err(|e| CompileError { message: e })?;
     
+    // Expand includes by parsing header contents and merging
+    let expanded_ast = expand_includes(&ast)?;
+    
     let mut compiler = Compiler::new(options.clone());
-    compiler.compile_program(&ast)?;
+    compiler.compile_program(&expanded_ast)?;
     
     Ok(compiler.output)
+}
+
+/// Expand #include directives by parsing and merging header contents
+fn expand_includes(program: &Program) -> Result<Program, CompileError> {
+    let mut expanded_items = Vec::new();
+    
+    for item in &program.items {
+        match item {
+            TopLevelItem::Include(path) => {
+                // Look up the header
+                let header_source = get_header(path).ok_or_else(|| CompileError {
+                    message: format!("Unknown header file: <{}>", path),
+                })?;
+                
+                // Parse the header
+                let pairs = lc3b_c_grammar::parse(header_source)
+                    .map_err(|e| CompileError { 
+                        message: format!("Error parsing <{}>: {}", path, e) 
+                    })?;
+                
+                let header_ast = lc3b_c_ast::build_ast(pairs)
+                    .map_err(|e| CompileError { 
+                        message: format!("Error in <{}>: {}", path, e) 
+                    })?;
+                
+                // Add all items from the header (except nested includes for now)
+                for header_item in header_ast.items {
+                    if !matches!(header_item, TopLevelItem::Include(_)) {
+                        expanded_items.push(header_item);
+                    }
+                }
+            }
+            other => {
+                expanded_items.push(other.clone());
+            }
+        }
+    }
+    
+    Ok(Program { items: expanded_items })
 }
 
 /// Compiler state
@@ -121,6 +165,9 @@ impl Compiler {
 
         for item in &program.items {
             match item {
+                TopLevelItem::Include(_) => {
+                    // Includes should already be expanded; skip if any remain
+                }
                 TopLevelItem::Function(f) if f.name == "main" => {
                     main_func = Some(f);
                 }
@@ -865,6 +912,21 @@ impl Compiler {
     }
 
     fn compile_call(&mut self, function: &str, arguments: &[Expression]) -> Result<(), CompileError> {
+        // Check for trap() intrinsic - trap(vector) emits TRAP instruction
+        if function == "trap" {
+            if arguments.len() != 1 {
+                return Err(CompileError { message: "trap() takes exactly 1 argument".to_string() });
+            }
+            // Argument should be a literal trap vector
+            if let Expression::IntLiteral(vector) = &arguments[0] {
+                self.emit_instruction(&format!("TRAP x{:02X}", vector));
+            } else {
+                return Err(CompileError { message: "trap() argument must be a constant".to_string() });
+            }
+            return Ok(());
+        }
+
+        // Regular function call
         self.emit_comment(&format!("Call {}()", function));
         
         // Push arguments right-to-left
@@ -1080,5 +1142,38 @@ mod tests {
         println!("{}", result);
         assert!(result.contains("else_"));
         assert!(result.contains("endif_"));
+    }
+
+    #[test]
+    fn test_include_io() {
+        let source = r#"
+            #include <lc3b-io.h>
+
+            int main() {
+                puts("Hello, LC-3b!");
+                return 0;
+            }
+        "#;
+        let result = compile(source, &CompileOptions::default()).unwrap();
+        println!("{}", result);
+        // Should have the puts function from the header
+        assert!(result.contains("puts:"));
+        // Should call puts
+        assert!(result.contains("JSR puts"));
+        // puts should use TRAP x22
+        assert!(result.contains("TRAP x22"));
+    }
+
+    #[test]
+    fn test_trap_intrinsic() {
+        let source = r#"
+            int main() {
+                trap(0x25);
+                return 0;
+            }
+        "#;
+        let result = compile(source, &CompileOptions::default()).unwrap();
+        println!("{}", result);
+        assert!(result.contains("TRAP x25"));
     }
 }

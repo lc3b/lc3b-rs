@@ -9,6 +9,7 @@ pub struct Program {
 /// Top-level items in a program
 #[derive(Debug, Clone, PartialEq)]
 pub enum TopLevelItem {
+    Include(String),
     Function(Function),
     GlobalDeclaration(Declaration),
 }
