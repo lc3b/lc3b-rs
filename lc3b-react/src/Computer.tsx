@@ -33,9 +33,44 @@ int main() {
 
 type Tab = "simulator" | "instructions" | "assembly" | "samples" | "about";
 type EditorMode = "assembly" | "c";
+type ExamplesSubtab = "assembly" | "c";
+
+// Parse the URL hash to get tab and subtab
+function parseHash(): { tab: Tab; examplesSubtab: ExamplesSubtab } {
+  const hash = window.location.hash.slice(1); // Remove leading #
+  const parts = hash.split("/");
+  
+  const validTabs: Tab[] = ["simulator", "instructions", "assembly", "samples", "about"];
+  // Map "examples" to "samples" for internal state
+  let tab: Tab = "simulator";
+  if (parts[0] === "examples") {
+    tab = "samples";
+  } else if (validTabs.includes(parts[0] as Tab)) {
+    tab = parts[0] as Tab;
+  }
+  
+  let examplesSubtab: ExamplesSubtab = "assembly";
+  if (parts[0] === "examples" && (parts[1] === "assembly" || parts[1] === "c")) {
+    examplesSubtab = parts[1];
+  }
+  
+  return { tab, examplesSubtab };
+}
+
+// Build a hash string from tab and subtab
+function buildHash(tab: Tab, examplesSubtab?: ExamplesSubtab): string {
+  // Use "examples" in URL instead of "samples"
+  const urlTab = tab === "samples" ? "examples" : tab;
+  if (tab === "samples" && examplesSubtab) {
+    return `#${urlTab}/${examplesSubtab}`;
+  }
+  return `#${urlTab}`;
+}
 
 function Computer() {
-  const [activeTab, setActiveTab] = useState<Tab>("simulator");
+  const { tab: initialTab, examplesSubtab: initialExamplesSubtab } = parseHash();
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  const [examplesSubtab, setExamplesSubtab] = useState<ExamplesSubtab>(initialExamplesSubtab);
   const [editorMode, setEditorMode] = useState<EditorMode>("assembly");
   const [assembly, setAssembly] = useState(DEFAULT_ASSEMBLY);
   const [cCode, setCCode] = useState(DEFAULT_C_CODE);
@@ -64,6 +99,26 @@ function Computer() {
   const [wasmMemoryBytes, setWasmMemoryBytes] = useState<number | null>(null);
 
   const computerRef = useRef<WasmComputer | null>(null);
+
+  // Update URL when tab or subtab changes
+  useEffect(() => {
+    const newHash = buildHash(activeTab, activeTab === "samples" ? examplesSubtab : undefined);
+    if (window.location.hash !== newHash) {
+      window.history.pushState(null, "", newHash);
+    }
+  }, [activeTab, examplesSubtab]);
+
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    const handleHashChange = () => {
+      const { tab, examplesSubtab: subtab } = parseHash();
+      setActiveTab(tab);
+      setExamplesSubtab(subtab);
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
 
   useEffect(() => {
     init().then(() => {
@@ -403,7 +458,11 @@ function Computer() {
         </div>
       ) : activeTab === "samples" ? (
         <div className="flex-1 overflow-y-auto bg-[var(--bg-primary)]">
-          <SamplePrograms onLoadSample={handleLoadSample} />
+          <SamplePrograms 
+            onLoadSample={handleLoadSample}
+            activeSubtab={examplesSubtab}
+            onSubtabChange={setExamplesSubtab}
+          />
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto bg-[var(--bg-primary)]">

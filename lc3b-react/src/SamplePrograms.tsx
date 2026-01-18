@@ -1,16 +1,15 @@
-import { useState } from "react";
 import { assemblyExamples, cExamples, SampleProgram } from "./samples";
 
 type ExampleTab = "assembly" | "c";
 
 interface SampleProgramsProps {
   onLoadSample: (code: string, mode: "assembly" | "c") => void;
+  activeSubtab: ExampleTab;
+  onSubtabChange: (subtab: ExampleTab) => void;
 }
 
-export function SamplePrograms({ onLoadSample }: SampleProgramsProps) {
-  const [activeTab, setActiveTab] = useState<ExampleTab>("assembly");
-
-  const examples: SampleProgram[] = activeTab === "assembly" ? assemblyExamples : cExamples;
+export function SamplePrograms({ onLoadSample, activeSubtab, onSubtabChange }: SampleProgramsProps) {
+  const examples: SampleProgram[] = activeSubtab === "assembly" ? assemblyExamples : cExamples;
 
   return (
     <div className="p-6">
@@ -25,9 +24,9 @@ export function SamplePrograms({ onLoadSample }: SampleProgramsProps) {
         {/* Subtabs for Assembly / C */}
         <div className="flex gap-2 mb-8">
           <button
-            onClick={() => setActiveTab("assembly")}
+            onClick={() => onSubtabChange("assembly")}
             className={`px-4 py-2 rounded-md font-medium transition-colors ${
-              activeTab === "assembly"
+              activeSubtab === "assembly"
                 ? "bg-[var(--accent-primary)] text-[var(--bg-primary)]"
                 : "bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
             }`}
@@ -35,9 +34,9 @@ export function SamplePrograms({ onLoadSample }: SampleProgramsProps) {
             Assembly
           </button>
           <button
-            onClick={() => setActiveTab("c")}
+            onClick={() => onSubtabChange("c")}
             className={`px-4 py-2 rounded-md font-medium transition-colors ${
-              activeTab === "c"
+              activeSubtab === "c"
                 ? "bg-[var(--accent-primary)] text-[var(--bg-primary)]"
                 : "bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
             }`}
@@ -64,7 +63,7 @@ export function SamplePrograms({ onLoadSample }: SampleProgramsProps) {
               </div>
 
               <button
-                onClick={() => onLoadSample(sample.code, activeTab)}
+                onClick={() => onLoadSample(sample.code, activeSubtab)}
                 className="btn-primary px-5 py-2.5"
               >
                 Load example
