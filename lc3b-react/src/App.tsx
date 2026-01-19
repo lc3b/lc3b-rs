@@ -1,10 +1,13 @@
 import Computer from "./Computer";
 import { ThemeProvider } from "./ThemeContext";
+import { AgentProvider } from "./AgentContext";
 
 function App() {
   return (
     <ThemeProvider>
-      <Computer />
+      <AgentProvider>
+        <Computer />
+      </AgentProvider>
     </ThemeProvider>
   );
 }

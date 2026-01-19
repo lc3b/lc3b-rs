@@ -12,6 +12,8 @@ import Instructions from "./Instructions";
 import Assembly from "./Assembly";
 import { SamplePrograms } from "./SamplePrograms";
 import { ThemeToggle } from "./ThemeContext";
+import Agent from "./Agent";
+import { useAgent } from "./AgentContext";
 
 const DEFAULT_ASSEMBLY = `; LC-3b Assembly Program
 ; Example: Add registers
@@ -31,7 +33,7 @@ int main() {
 }
 `;
 
-type Tab = "simulator" | "instructions" | "assembly" | "samples" | "about";
+type Tab = "simulator" | "instructions" | "assembly" | "samples" | "about" | "agent";
 type EditorMode = "assembly" | "c";
 type ExamplesSubtab = "assembly" | "c";
 
@@ -40,7 +42,7 @@ function parseHash(): { tab: Tab; examplesSubtab: ExamplesSubtab } {
   const hash = window.location.hash.slice(1); // Remove leading #
   const parts = hash.split("/");
   
-  const validTabs: Tab[] = ["simulator", "instructions", "assembly", "samples", "about"];
+  const validTabs: Tab[] = ["simulator", "instructions", "assembly", "samples", "about", "agent"];
   // Map "examples" to "samples" for internal state
   let tab: Tab = "simulator";
   if (parts[0] === "examples") {
@@ -74,6 +76,9 @@ function Computer() {
   const [editorMode, setEditorMode] = useState<EditorMode>("assembly");
   const [assembly, setAssembly] = useState(DEFAULT_ASSEMBLY);
   const [cCode, setCCode] = useState(DEFAULT_C_CODE);
+  
+  // Agent integration
+  const { status: agentStatus, setLC3BState } = useAgent();
   const [compileError, setCompileError] = useState<string | null>(null);
   const [availableHeaders, setAvailableHeaders] = useState<string[]>([]);
   const [expandedHeader, setExpandedHeader] = useState<string | null>(null);
@@ -131,13 +136,13 @@ function Computer() {
   const updateState = () => {
     const computer = computerRef.current;
     if (computer) {
-      setPc(computer.program_counter());
-      setConditions({
+      const newPc = computer.program_counter();
+      const newConditions = {
         n: computer.condition_n(),
         z: computer.condition_z(),
         p: computer.condition_p(),
-      });
-      setRegisters({
+      };
+      const newRegisters = {
         r0: computer.register(0),
         r1: computer.register(1),
         r2: computer.register(2),
@@ -146,12 +151,42 @@ function Computer() {
         r5: computer.register(5),
         r6: computer.register(6),
         r7: computer.register(7),
-      });
-      setConsoleOutput(computer.console_output());
-      setIsHalted(computer.is_halted());
+      };
+      const newConsoleOutput = computer.console_output();
+      const newIsHalted = computer.is_halted();
+      
+      setPc(newPc);
+      setConditions(newConditions);
+      setRegisters(newRegisters);
+      setConsoleOutput(newConsoleOutput);
+      setIsHalted(newIsHalted);
       setWasmMemoryBytes(wasm_memory_size());
+      
+      // Update agent with LC-3B state
+      setLC3BState({
+        cCode,
+        assembly,
+        registers: newRegisters,
+        pc: newPc,
+        conditions: newConditions,
+        isHalted: newIsHalted,
+        consoleOutput: newConsoleOutput,
+      });
     }
   };
+  
+  // Keep agent updated with code changes
+  useEffect(() => {
+    setLC3BState({
+      cCode,
+      assembly,
+      registers,
+      pc,
+      conditions,
+      isHalted,
+      consoleOutput,
+    });
+  }, [cCode, assembly, registers, pc, conditions, isHalted, consoleOutput, setLC3BState]);
 
   const handleCompileC = () => {
     try {
@@ -269,8 +304,19 @@ function Computer() {
                 About
               </button>
             </nav>
-            <div className="border-l border-[var(--border-color)] pl-4">
+            <div className="border-l border-[var(--border-color)] pl-4 flex items-center gap-3">
               <ThemeToggle />
+              <button
+                onClick={() => setActiveTab("agent")}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === "agent"
+                    ? "bg-[var(--accent-primary)] text-white"
+                    : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                <span>Agent</span>
+                <AgentStatusIndicator status={agentStatus} />
+              </button>
             </div>
           </div>
         </div>
@@ -464,12 +510,35 @@ function Computer() {
             onSubtabChange={setExamplesSubtab}
           />
         </div>
+      ) : activeTab === "agent" ? (
+        <div className="flex-1 overflow-y-auto bg-[var(--bg-primary)]">
+          <Agent />
+        </div>
       ) : (
         <div className="flex-1 overflow-y-auto bg-[var(--bg-primary)]">
           <About />
         </div>
       )}
     </div>
+  );
+}
+
+// Agent status indicator component
+function AgentStatusIndicator({ status }: { status: string }) {
+  const config: Record<string, { color: string; pulse: boolean }> = {
+    disabled: { color: "bg-[var(--text-muted)]", pulse: false },
+    downloading: { color: "bg-[var(--accent-primary)]", pulse: true },
+    available: { color: "bg-[var(--accent-success)]", pulse: false },
+    running: { color: "bg-[var(--accent-quaternary)]", pulse: true },
+  };
+
+  const { color, pulse } = config[status] || config.disabled;
+
+  return (
+    <span
+      className={`inline-block w-2 h-2 rounded-full ${color} ${pulse ? "animate-pulse" : ""}`}
+      title={status.charAt(0).toUpperCase() + status.slice(1)}
+    />
   );
 }
 
