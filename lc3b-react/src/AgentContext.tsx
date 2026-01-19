@@ -289,35 +289,103 @@ Condition codes are set automatically after these instructions: ADD, AND, NOT, L
    - Definition: \`LOOP ADD R1, R1, #1\`
    - Reference: \`BR LOOP\`
 
-## Example Program Structure
+## Common Mistakes to Avoid
+
+1. **Immediate value out of range**: \`ADD R1, R1, #50\` is INVALID - imm5 max is 15. For values > 15, use .FILL:
+   \`\`\`
+   LD R1, FIFTY
+   ...
+   FIFTY .FILL #50
+   \`\`\`
+
+2. **Data in the execution path**: .STRINGZ and .FILL must be placed AFTER HALT or jumped over. The CPU will try to execute data as instructions!
+   \`\`\`
+   ; WRONG - string will be executed as code!
+   LABEL .STRINGZ "Hello"
+         LEA R0, LABEL
+   
+   ; CORRECT - data after HALT
+         LEA R0, MSG
+         PUTS
+         HALT
+   MSG   .STRINGZ "Hello"
+   \`\`\`
+
+3. **Redundant/impossible branches**: After one branch, the next instruction only executes if the branch was NOT taken:
+   \`\`\`
+   ; WRONG - second branch never reached if first taken
+   BRp POSITIVE
+   BRp NEGATIVE    ; This only runs if NOT positive, so it never branches!
+   
+   ; CORRECT - use complementary conditions
+   BRzp POSITIVE   ; Branch if zero or positive
+   BRn NEGATIVE    ; Branch if negative (only reached if above didn't branch)
+   ; Or simpler:
+   BRzp POSITIVE   ; If not negative, go to POSITIVE
+   BR NEGATIVE     ; Otherwise (negative), go to NEGATIVE
+   \`\`\`
+
+4. **Forgetting condition codes are set by the LAST instruction**: If you need to test a register, you may need to set the codes first:
+   \`\`\`
+   ADD R1, R1, #0   ; Sets N/Z/P based on R1's current value
+   BRn NEGATIVE     ; Now we can branch based on R1
+   \`\`\`
+
+5. **Using wrong registers**: Read the requirements carefully. If asked to put a value in R3, use R3, not R0.
+
+## Example: Conditional Message Based on Sum
 
 \`\`\`
 .ORIG x3000
 
-        ; Initialize registers
-        AND R0, R0, #0      ; Clear R0
-        ADD R0, R0, #10     ; R0 = 10
+        ; Initialize R3 = 10 (within imm5 range)
+        AND R3, R3, #0      ; Clear R3
+        ADD R3, R3, #10     ; R3 = 10
         
-        ; Load from memory
-        LD R1, DATA         ; R1 = value at DATA
+        ; Initialize R4 = 50 (too large for imm5, use .FILL)
+        LD R4, FIFTY        ; R4 = 50
         
-        ; Conditional branch
-        ADD R1, R1, #0      ; Set condition codes for R1
-        BRz SKIP            ; Branch if R1 is zero
+        ; Add R3 + R4, store in R5
+        ADD R5, R3, R4      ; R5 = R3 + R4 = 60, sets condition codes
         
-        ; Print message
-        LEA R0, MSG         ; R0 = address of MSG
-        PUTS                ; Print string
+        ; Branch based on result (N/Z/P already set by ADD)
+        BRzp POSITIVE       ; If zero or positive, go to POSITIVE
+                            ; Fall through if negative
         
-SKIP    HALT                ; Stop execution
+        ; Negative case
+        LEA R0, NEG_MSG     ; Load address of negative message
+        PUTS                ; Print it
+        BR DONE             ; Skip positive case
+        
+POSITIVE
+        LEA R0, POS_MSG     ; Load address of positive message
+        PUTS                ; Print it
+        
+DONE    HALT                ; Stop execution
 
-DATA    .FILL #42           ; Store value 42
-MSG     .STRINGZ "Hello!"   ; Null-terminated string
+; === DATA SECTION (after all code) ===
+FIFTY   .FILL #50
+POS_MSG .STRINGZ "Wow! Positive!"
+NEG_MSG .STRINGZ "Wow, don't be so negative!"
 
 .END
 \`\`\`
 
-Be concise, accurate, and reference the actual simulator state shown below when relevant. When writing assembly code, always include .ORIG and .END directives, and use correct LC-3B syntax.`;
+## Simple Example: Hello World
+
+\`\`\`
+.ORIG x3000
+
+        LEA R0, MSG         ; R0 = address of MSG
+        PUTS                ; Print string (TRAP x22)
+        HALT                ; Stop (TRAP x25)
+
+MSG     .STRINGZ "Hello, World!"
+
+.END
+\`\`\`
+
+Be concise, accurate, and reference the actual simulator state shown below when relevant. When writing assembly code, always include .ORIG and .END directives, use correct LC-3B syntax, and place all data (.FILL, .STRINGZ, .BLKW) AFTER the HALT instruction.`;
 
 // Model info - must use a model that supports function calling
 // Supported models: Hermes-2-Pro-Llama-3-8B, Hermes-2-Pro-Mistral-7B, Hermes-3-Llama-3.1-8B
