@@ -8,6 +8,7 @@ import {
   DEFAULT_SYSTEM_PROMPT,
   CacheInfo,
   AgentStatus,
+  ChatMessage,
 } from "./AgentContext";
 
 // Determine which step we're on based on progress text
@@ -50,6 +51,7 @@ export default function Agent() {
     browserInfo,
     storageEstimate,
     error,
+    generationStats,
     enableAgent,
     disableAgent,
     sendMessage,
@@ -551,6 +553,28 @@ export default function Agent() {
             <div ref={chatEndRef} />
           </div>
 
+          {/* Generation Stats */}
+          {generationStats && (
+            <div className="px-4 py-2 border-t border-[var(--border-color)] bg-[var(--bg-secondary)]">
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-4">
+                  <span className="text-[var(--text-muted)]">
+                    Tokens: <span className="text-[var(--text-primary)] font-mono">{generationStats.tokensGenerated}</span>
+                  </span>
+                  <span className="text-[var(--text-muted)]">
+                    Speed: <span className="text-[var(--accent-success)] font-mono font-semibold">{generationStats.tokensPerSecond.toFixed(1)} tok/s</span>
+                  </span>
+                </div>
+                {status === "running" && (
+                  <span className="flex items-center gap-1.5 text-[var(--accent-primary)]">
+                    <LoadingSpinner className="w-3 h-3" />
+                    <span>Generating...</span>
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Input Area */}
           <form onSubmit={handleSendMessage} className="p-4 border-t border-[var(--border-color)]">
             <div className="flex gap-2">
@@ -620,8 +644,9 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function ChatMessageBubble({ message }: { message: { role: string; content: string } }) {
+function ChatMessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
+  const isStreaming = message.isStreaming;
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
@@ -634,6 +659,9 @@ function ChatMessageBubble({ message }: { message: { role: string; content: stri
       >
         <div className={`text-sm whitespace-pre-wrap ${isUser ? "" : "text-[var(--text-primary)]"}`}>
           {message.content}
+          {isStreaming && (
+            <span className="inline-block w-2 h-4 ml-0.5 bg-[var(--accent-primary)] animate-pulse" />
+          )}
         </div>
       </div>
     </div>

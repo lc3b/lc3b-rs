@@ -38,6 +38,15 @@ export interface ChatMessage {
   role: "user" | "assistant" | "system";
   content: string;
   timestamp: Date;
+  isStreaming?: boolean;
+}
+
+// Generation statistics
+export interface GenerationStats {
+  tokensGenerated: number;
+  startTime: number;
+  endTime?: number;
+  tokensPerSecond: number;
 }
 
 // LC-3B state that can be read by the agent
@@ -192,6 +201,7 @@ interface AgentContextType {
   browserInfo: BrowserInfo;
   storageEstimate: { quota: number; usage: number } | null;
   error: string | null;
+  generationStats: GenerationStats | null;
 
   // Actions
   enableAgent: () => Promise<void>;
@@ -224,6 +234,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [cacheDetails, setCacheDetails] = useState<CacheInfo[] | null>(null);
   const [isLoadingCache, setIsLoadingCache] = useState(false);
+  const [generationStats, setGenerationStats] = useState<GenerationStats | null>(null);
 
   const engineRef = useRef<MLCEngine | null>(null);
   const lc3bStateRef = useRef<LC3BState | null>(null);
@@ -339,6 +350,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
     setChatMessages((prev) => [...prev, userMessage]);
     setStatus("running");
+    setGenerationStats(null);
 
     try {
       // Get current simulator state to inject into context
@@ -357,30 +369,94 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         { role: "user", content: message },
       ];
 
-      // Simple completion without tool calling - state is already in context
-      const response = await engineRef.current.chat.completions.create({
+      // Create a placeholder streaming message
+      const streamingMessage: ChatMessage = {
+        role: "assistant",
+        content: "",
+        timestamp: new Date(),
+        isStreaming: true,
+      };
+      setChatMessages((prev) => [...prev, streamingMessage]);
+
+      // Track generation stats
+      const startTime = performance.now();
+      let tokensGenerated = 0;
+      let fullContent = "";
+
+      // Use streaming completion
+      const stream = await engineRef.current.chat.completions.create({
         messages,
+        stream: true,
       });
 
-      const assistantContent = response.choices[0]?.message?.content || "";
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta?.content || "";
+        if (delta) {
+          fullContent += delta;
+          tokensGenerated++;
+          
+          // Update the streaming message content
+          setChatMessages((prev) => {
+            const newMessages = [...prev];
+            const lastIdx = newMessages.length - 1;
+            if (lastIdx >= 0 && newMessages[lastIdx].isStreaming) {
+              newMessages[lastIdx] = {
+                ...newMessages[lastIdx],
+                content: fullContent,
+              };
+            }
+            return newMessages;
+          });
 
-      const assistantMessage: ChatMessage = {
-        role: "assistant",
-        content: assistantContent,
-        timestamp: new Date(),
-      };
+          // Update stats in real-time
+          const currentTime = performance.now();
+          const elapsedSeconds = (currentTime - startTime) / 1000;
+          setGenerationStats({
+            tokensGenerated,
+            startTime,
+            tokensPerSecond: elapsedSeconds > 0 ? tokensGenerated / elapsedSeconds : 0,
+          });
+        }
+      }
 
-      setChatMessages((prev) => [...prev, assistantMessage]);
+      // Finalize the message (remove streaming flag)
+      const endTime = performance.now();
+      const elapsedSeconds = (endTime - startTime) / 1000;
+      
+      setChatMessages((prev) => {
+        const newMessages = [...prev];
+        const lastIdx = newMessages.length - 1;
+        if (lastIdx >= 0 && newMessages[lastIdx].isStreaming) {
+          newMessages[lastIdx] = {
+            ...newMessages[lastIdx],
+            content: fullContent,
+            isStreaming: false,
+          };
+        }
+        return newMessages;
+      });
+
+      // Final stats
+      setGenerationStats({
+        tokensGenerated,
+        startTime,
+        endTime,
+        tokensPerSecond: elapsedSeconds > 0 ? tokensGenerated / elapsedSeconds : 0,
+      });
+
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
 
-      const errorMessage: ChatMessage = {
-        role: "assistant",
-        content: `Error: ${err instanceof Error ? err.message : String(err)}`,
-        timestamp: new Date(),
-      };
-
-      setChatMessages((prev) => [...prev, errorMessage]);
+      // Remove the streaming message if it exists and add error message
+      setChatMessages((prev) => {
+        const filtered = prev.filter(msg => !msg.isStreaming);
+        return [...filtered, {
+          role: "assistant",
+          content: `Error: ${err instanceof Error ? err.message : String(err)}`,
+          timestamp: new Date(),
+        }];
+      });
+      setGenerationStats(null);
     } finally {
       setStatus("available");
     }
@@ -575,6 +651,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         browserInfo,
         storageEstimate,
         error,
+        generationStats,
         enableAgent,
         disableAgent,
         sendMessage,
