@@ -205,9 +205,10 @@ Condition codes are set automatically after these instructions: ADD, AND, NOT, L
 - \`BRzp LABEL\` - branch if Z=1 or P=1
 - Uses PCoffset9 (9-bit signed offset)
 
-**JMP** - Unconditional Jump
+**JMP** - Unconditional Jump (register only)
 - \`JMP BaseR\` → PC = BaseR
 - Jumps to address contained in register
+- CANNOT use a label directly! Use \`BR label\` or \`BRnzp label\` for unconditional branch to a label
 
 **RET** - Return from Subroutine
 - \`RET\` is equivalent to \`JMP R7\`
@@ -289,6 +290,41 @@ Condition codes are set automatically after these instructions: ADD, AND, NOT, L
    - Definition: \`LOOP ADD R1, R1, #1\`
    - Reference: \`BR LOOP\`
 
+## Control Flow Patterns (IMPORTANT)
+
+### If-Else Pattern
+To implement \`if (condition) { A } else { B }\`:
+\`\`\`
+        ; Assume condition codes already set by previous instruction
+        BRcond THEN_BRANCH  ; Branch to THEN if condition met
+        ; ELSE branch (condition NOT met, falls through here)
+        ... else code ...
+        BR DONE             ; Skip the THEN branch
+THEN_BRANCH
+        ... then code ...
+DONE    ... continue ...
+\`\`\`
+
+### If Positive/Negative Example
+\`\`\`
+        ADD R1, R2, R3      ; Sets condition codes based on result
+        BRzp IS_POSITIVE    ; If zero or positive, jump to IS_POSITIVE
+        ; Negative case (falls through when BRzp not taken)
+        LEA R0, NEG_MSG
+        PUTS
+        BR DONE             ; MUST skip positive case!
+IS_POSITIVE
+        LEA R0, POS_MSG
+        PUTS
+DONE    HALT
+\`\`\`
+
+### Key Rules:
+1. Only ONE branch after setting condition codes - don't chain multiple branches
+2. Use \`BR label\` (unconditional) to skip over the other case
+3. \`JMP\` takes a REGISTER, not a label - use \`BR\` for labels
+4. The "else" case is the fall-through (when branch not taken)
+
 ## Common Mistakes to Avoid
 
 1. **Immediate value out of range**: \`ADD R1, R1, #50\` is INVALID - imm5 max is 15. For values > 15, use .FILL:
@@ -311,27 +347,50 @@ Condition codes are set automatically after these instructions: ADD, AND, NOT, L
    MSG   .STRINGZ "Hello"
    \`\`\`
 
-3. **Redundant/impossible branches**: After one branch, the next instruction only executes if the branch was NOT taken:
+3. **Chaining multiple branches (WRONG)**:
    \`\`\`
-   ; WRONG - second branch never reached if first taken
-   BRp POSITIVE
-   BRp NEGATIVE    ; This only runs if NOT positive, so it never branches!
+   ; WRONG - confusing and often broken
+   BRzp POSITIVE
+   BRnz NEGATIVE    ; This makes no sense!
    
-   ; CORRECT - use complementary conditions
-   BRzp POSITIVE   ; Branch if zero or positive
-   BRn NEGATIVE    ; Branch if negative (only reached if above didn't branch)
-   ; Or simpler:
-   BRzp POSITIVE   ; If not negative, go to POSITIVE
-   BR NEGATIVE     ; Otherwise (negative), go to NEGATIVE
+   ; CORRECT - one branch, then fall through or unconditional branch
+   BRzp POSITIVE    ; If not negative, go to POSITIVE
+                    ; Fall through here means negative
+   LEA R0, NEG_MSG
+   PUTS
+   BR DONE          ; Skip positive section
+   POSITIVE ...
    \`\`\`
 
-4. **Forgetting condition codes are set by the LAST instruction**: If you need to test a register, you may need to set the codes first:
+4. **Using JMP with a label (WRONG)**:
    \`\`\`
-   ADD R1, R1, #0   ; Sets N/Z/P based on R1's current value
-   BRn NEGATIVE     ; Now we can branch based on R1
+   ; WRONG - JMP only takes registers
+   JMP DONE
+   
+   ; CORRECT - use BR for labels
+   BR DONE
    \`\`\`
 
-5. **Using wrong registers**: Read the requirements carefully. If asked to put a value in R3, use R3, not R0.
+5. **Forgetting to skip the other branch**:
+   \`\`\`
+   ; WRONG - executes BOTH messages!
+   BRzp POSITIVE
+   LEA R0, NEG_MSG
+   PUTS
+   POSITIVE LEA R0, POS_MSG   ; Falls through to here!
+   PUTS
+   
+   ; CORRECT - skip with BR
+   BRzp POSITIVE
+   LEA R0, NEG_MSG
+   PUTS
+   BR DONE          ; Skip positive!
+   POSITIVE LEA R0, POS_MSG
+   PUTS
+   DONE HALT
+   \`\`\`
+
+6. **Using wrong registers**: Read the requirements carefully. If asked to put a value in R3, use R3, not R0.
 
 ## Example: Conditional Message Based on Sum
 
