@@ -124,19 +124,26 @@ HALT             ; Stop execution
 ;
 ; This program modifies the imm5 field of an ADD instruction
 ; at runtime to create an incrementing counter.
+;
+; Note: LC-3b uses LDW/STW with base+offset addressing,
+; so we use LEA to get addresses into a base register.
 
 .ORIG x3000
+
+; === SETUP ===
+; Get base addresses for our data using LEA
+LEA R4, target    ; R4 = address of target instruction
+LEA R5, mask      ; R5 = address of mask
 
 ; === MAIN LOOP ===
 loop:
     ; Load the instruction we'll modify into R1
-    ; The target instruction is at label 'target'
-    LD R1, target
+    LDW R1, R4, #0    ; R1 = instruction at 'target'
 
     ; Extract current imm5 value:
     ; The imm5 field is in bits [4:0]
     ; We mask with 0x001F to isolate these bits
-    LD R2, mask
+    LDW R2, R5, #0    ; R2 = mask value (0x001F)
     AND R3, R1, R2    ; R3 = current counter value
 
     ; Display counter in R0 (visible in register view)
@@ -147,7 +154,7 @@ loop:
     ADD R1, R1, #1
 
     ; Store modified instruction back to memory
-    ST R1, target
+    STW R1, R4, #0    ; Write back to 'target'
 
     ; Check if we've counted to 10
     ADD R3, R3, #-10
