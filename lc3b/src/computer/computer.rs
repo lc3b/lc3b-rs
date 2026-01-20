@@ -186,7 +186,9 @@ impl<I: IO, O: Observer> Computer<I, O> {
             Instruction::Jsrr(register) => {
                 self.perform_jsrr_instruction(register);
             }
-            Instruction::Ldb(register, register1, pcoffset6) => todo!(),
+            Instruction::Ldb(dr, base, offset) => {
+                self.perform_ldb_instruction(dr, base, offset);
+            }
             Instruction::Ldi(register, register1, pcoffset6) => todo!(),
             Instruction::Ldr(register, register1, pcoffset6) => todo!(),
             Instruction::Lea(dr, pcoffset9) => {
@@ -343,6 +345,39 @@ impl<I: IO, O: Observer> Computer<I, O> {
         let address = base_val.wrapping_add(shifted_offset);
         let value = self.load_register(sr);
         self.memory.write_word(address, value);
+    }
+
+    pub fn perform_ldb_instruction(&mut self, dr: Register, base: Register, offset: PCOffset6) {
+        // LDB: DR = SEXT(mem[BaseR + SEXT(offset6)][7:0])
+        // Note: No shift for byte addressing (unlike LDR/STW which shift by 1)
+        let base_val = self.load_register(base);
+        let signed_offset = offset.sign_extend();
+        let byte_address = base_val.wrapping_add(signed_offset as u16);
+
+        // LC-3b memory is word-addressed internally, so we need to:
+        // 1. Get the word address (byte_address >> 1)
+        // 2. Determine which byte (low or high) based on LSB of byte_address
+        let word_address = byte_address >> 1;
+        let word = self.memory.read_word(word_address);
+
+        let byte = if byte_address & 1 == 0 {
+            // Even address: low byte (bits [7:0])
+            (word & 0xFF) as u8
+        } else {
+            // Odd address: high byte (bits [15:8])
+            ((word >> 8) & 0xFF) as u8
+        };
+
+        // Sign-extend the byte to 16 bits
+        let result = if byte & 0x80 != 0 {
+            // Negative: sign-extend with 1s
+            (byte as u16) | 0xFF00
+        } else {
+            byte as u16
+        };
+
+        self.store_register(dr, result);
+        self.set_condition_codes(result);
     }
 
     // --- TRAP implementation ---
