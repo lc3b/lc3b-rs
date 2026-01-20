@@ -116,6 +116,60 @@ HALT             ; Stop execution
 
 .END`,
   },
+  {
+    title: "Self-Modifying Code",
+    description: "Demonstrates von Neumann architecture by modifying an instruction at runtime to create a counter",
+    code: `; Self-Modifying Code Example
+; Demonstrates how code and data share the same memory
+;
+; This program modifies the imm5 field of an ADD instruction
+; at runtime to create an incrementing counter.
+
+.ORIG x3000
+
+; === MAIN LOOP ===
+loop:
+    ; Load the instruction we'll modify into R1
+    ; The target instruction is at label 'target'
+    LD R1, target
+
+    ; Extract current imm5 value:
+    ; The imm5 field is in bits [4:0]
+    ; We mask with 0x001F to isolate these bits
+    LD R2, mask
+    AND R3, R1, R2    ; R3 = current counter value
+
+    ; Display counter in R0 (visible in register view)
+    ADD R0, R3, #0
+
+    ; Increment the counter by adding 1 to the instruction
+    ; Since imm5 is in the low bits, we can just ADD #1
+    ADD R1, R1, #1
+
+    ; Store modified instruction back to memory
+    ST R1, target
+
+    ; Check if we've counted to 10
+    ADD R3, R3, #-10
+    BRn loop          ; Continue if counter < 10
+
+    HALT
+
+; === DATA ===
+; This ADD instruction gets modified each iteration
+; Initially: ADD R0, R0, #0
+; After 1st loop: ADD R0, R0, #1
+; After 2nd loop: ADD R0, R0, #2
+; ...and so on
+target:
+    ADD R0, R0, #0
+
+; Mask to extract bits [4:0]
+mask:
+    .FILL x001F
+
+.END`,
+  },
 ];
 
 export const cExamples: SampleProgram[] = [
