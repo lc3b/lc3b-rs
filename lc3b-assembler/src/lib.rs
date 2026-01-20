@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, str::FromStr};
 
-use lc3b_isa::{AddInstruction, AndInstruction, Condition, Immediate5, Instruction, PCOffset6, PCOffset9, PCOffset11, Register, TrapVect8, XorInstruction};
+use lc3b_isa::{AddInstruction, AndInstruction, Bit, Condition, Immediate4, Immediate5, Instruction, PCOffset6, PCOffset9, PCOffset11, Register, TrapVect8, XorInstruction};
 use pest::{
     iterators::{Pair, Pairs},
     Parser,
@@ -519,6 +519,67 @@ impl Assembler {
                 };
                 let offset = PCOffset6::new(offset_value)?;
                 Instruction::Ldr(dr, base, offset)  // LDW uses same encoding as LDR
+            }
+            // Shift instructions
+            "LSHF" => {
+                let mut operands = inner.next().unwrap().into_inner();
+                let dr = Register::from_str(operands.next().unwrap().as_str())?;
+                let sr = Register::from_str(operands.next().unwrap().as_str())?;
+                let amount_arg = operands.next().unwrap();
+                let amount_value: u8 = match amount_arg.as_rule() {
+                    Rule::literal => {
+                        let s = amount_arg.as_str().strip_prefix('#').unwrap_or(amount_arg.as_str());
+                        s.parse()?
+                    }
+                    Rule::hex_literal => {
+                        let value = self.parse_hex_literal(&amount_arg)?;
+                        value as u8
+                    }
+                    _ => return Err(eyre::eyre!("Expected shift amount, got {:?}", amount_arg.as_rule())),
+                };
+                let amount = Immediate4::new(amount_value)?;
+                // LSHF: D=0, A=0
+                Instruction::Shf(dr, sr, Bit::new(false), Bit::new(false), amount)
+            }
+            "RSHFL" => {
+                let mut operands = inner.next().unwrap().into_inner();
+                let dr = Register::from_str(operands.next().unwrap().as_str())?;
+                let sr = Register::from_str(operands.next().unwrap().as_str())?;
+                let amount_arg = operands.next().unwrap();
+                let amount_value: u8 = match amount_arg.as_rule() {
+                    Rule::literal => {
+                        let s = amount_arg.as_str().strip_prefix('#').unwrap_or(amount_arg.as_str());
+                        s.parse()?
+                    }
+                    Rule::hex_literal => {
+                        let value = self.parse_hex_literal(&amount_arg)?;
+                        value as u8
+                    }
+                    _ => return Err(eyre::eyre!("Expected shift amount, got {:?}", amount_arg.as_rule())),
+                };
+                let amount = Immediate4::new(amount_value)?;
+                // RSHFL: D=1, A=0 (right shift logical)
+                Instruction::Shf(dr, sr, Bit::new(true), Bit::new(false), amount)
+            }
+            "RSHFA" => {
+                let mut operands = inner.next().unwrap().into_inner();
+                let dr = Register::from_str(operands.next().unwrap().as_str())?;
+                let sr = Register::from_str(operands.next().unwrap().as_str())?;
+                let amount_arg = operands.next().unwrap();
+                let amount_value: u8 = match amount_arg.as_rule() {
+                    Rule::literal => {
+                        let s = amount_arg.as_str().strip_prefix('#').unwrap_or(amount_arg.as_str());
+                        s.parse()?
+                    }
+                    Rule::hex_literal => {
+                        let value = self.parse_hex_literal(&amount_arg)?;
+                        value as u8
+                    }
+                    _ => return Err(eyre::eyre!("Expected shift amount, got {:?}", amount_arg.as_rule())),
+                };
+                let amount = Immediate4::new(amount_value)?;
+                // RSHFA: D=1, A=1 (right shift arithmetic)
+                Instruction::Shf(dr, sr, Bit::new(true), Bit::new(true), amount)
             }
             // Trap aliases
             "GETC" => Instruction::Trap(TrapVect8::new(0x20)),
