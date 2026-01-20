@@ -322,203 +322,207 @@ function Computer() {
         </div>
       </header>
 
-      {activeTab === "simulator" ? (
-        <div className="flex flex-1 h-[calc(100vh-68px)]">
-          {/* Editor Panel */}
-          <div className="flex-1 flex flex-col p-6 bg-[var(--bg-primary)]">
-            <div className="flex items-center justify-between mb-3">
-              {/* Mode Toggle */}
+      {/* Simulator Tab */}
+      <div className={`flex flex-1 h-[calc(100vh-68px)] ${activeTab === "simulator" ? "" : "hidden"}`}>
+        {/* Editor Panel */}
+        <div className="flex-1 flex flex-col p-6 bg-[var(--bg-primary)]">
+          <div className="flex items-center justify-between mb-3">
+            {/* Mode Toggle */}
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-md overflow-hidden border border-[var(--border-color)]">
+                <button
+                  onClick={() => setEditorMode("c")}
+                  className={`px-3 py-1 text-sm font-medium transition-colors ${
+                    editorMode === "c"
+                      ? "bg-[var(--accent-primary)] text-[var(--bg-primary)]"
+                      : "bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  C
+                </button>
+                <button
+                  onClick={() => setEditorMode("assembly")}
+                  className={`px-3 py-1 text-sm font-medium transition-colors ${
+                    editorMode === "assembly"
+                      ? "bg-[var(--accent-primary)] text-[var(--bg-primary)]"
+                      : "bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  Assembly
+                </button>
+              </div>
+              <span className="text-sm text-[var(--text-muted)] uppercase tracking-wider font-semibold ml-2">
+                {editorMode === "c" ? "C Source" : "LC-3b Assembly"}
+              </span>
+            </div>
+            <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <div className="flex rounded-md overflow-hidden border border-[var(--border-color)]">
-                  <button
-                    onClick={() => setEditorMode("c")}
-                    className={`px-3 py-1 text-sm font-medium transition-colors ${
-                      editorMode === "c"
-                        ? "bg-[var(--accent-primary)] text-[var(--bg-primary)]"
-                        : "bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                    }`}
-                  >
-                    C
-                  </button>
-                  <button
-                    onClick={() => setEditorMode("assembly")}
-                    className={`px-3 py-1 text-sm font-medium transition-colors ${
-                      editorMode === "assembly"
-                        ? "bg-[var(--accent-primary)] text-[var(--bg-primary)]"
-                        : "bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                    }`}
-                  >
-                    Assembly
-                  </button>
-                </div>
-                <span className="text-sm text-[var(--text-muted)] uppercase tracking-wider font-semibold ml-2">
-                  {editorMode === "c" ? "C Source" : "LC-3b Assembly"}
+                <span
+                  className={`status-dot ${programLoaded ? (isHalted ? "halted" : "ready") : "not-ready"}`}
+                />
+                <span
+                  className={`text-sm font-medium ${
+                    programLoaded
+                      ? isHalted
+                        ? "text-[var(--accent-warning)]"
+                        : "text-[var(--accent-success)]"
+                      : "text-[var(--text-muted)]"
+                  }`}
+                >
+                  {programLoaded ? (isHalted ? "Halted" : "Ready") : "Not Loaded"}
                 </span>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`status-dot ${programLoaded ? (isHalted ? "halted" : "ready") : "not-ready"}`}
-                  />
-                  <span
-                    className={`text-sm font-medium ${
-                      programLoaded
-                        ? isHalted
-                          ? "text-[var(--accent-warning)]"
-                          : "text-[var(--accent-success)]"
-                        : "text-[var(--text-muted)]"
-                    }`}
-                  >
-                    {programLoaded ? (isHalted ? "Halted" : "Ready") : "Not Loaded"}
-                  </span>
-                </div>
-                {programLoaded && (
-                  <span className="text-xs text-[var(--text-muted)]">
-                    {instructionCount} instruction{instructionCount !== 1 ? "s" : ""}
-                  </span>
-                )}
+              {programLoaded && (
+                <span className="text-xs text-[var(--text-muted)]">
+                  {instructionCount} instruction{instructionCount !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Editor textarea - shows C or Assembly based on mode */}
+          {editorMode === "c" ? (
+            <textarea
+              className="input-field h-48 min-h-[120px] max-h-[400px] rounded-lg p-4 font-mono text-sm resize-y leading-relaxed"
+              value={cCode}
+              onChange={(e) => {
+                setCCode(e.target.value);
+                setCompileError(null);
+              }}
+              placeholder="Enter C code here..."
+            />
+          ) : (
+            <textarea
+              className="input-field h-48 min-h-[120px] max-h-[400px] rounded-lg p-4 font-mono text-sm resize-y leading-relaxed"
+              value={assembly}
+              onChange={(e) => {
+                setAssembly(e.target.value);
+                setProgramLoaded(false);
+                setLoadError(null);
+              }}
+              placeholder="Enter LC-3b assembly here..."
+            />
+          )}
+
+          {/* Available Headers - only show in C mode */}
+          {editorMode === "c" && availableHeaders.length > 0 && (
+            <div className="mt-4">
+              <div className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-semibold mb-2">
+                Available Headers
+              </div>
+              <div className="space-y-2">
+                {availableHeaders.map((header) => (
+                  <div key={header} className="border border-[var(--border-color)] rounded-lg overflow-hidden">
+                    <button
+                      onClick={() => setExpandedHeader(expandedHeader === header ? null : header)}
+                      className="w-full px-3 py-2 text-left text-sm font-mono bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-between"
+                    >
+                      <span className="text-[var(--accent-primary)]">&lt;{header}&gt;</span>
+                      <span className="text-[var(--text-muted)]">
+                        {expandedHeader === header ? "▼" : "▶"}
+                      </span>
+                    </button>
+                    {expandedHeader === header && (
+                      <pre className="p-3 text-xs font-mono bg-[var(--bg-primary)] text-[var(--text-secondary)] overflow-x-auto max-h-64 overflow-y-auto">
+                        {get_header_contents(header) || "// Header not found"}
+                      </pre>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
+          )}
 
-            {/* Editor textarea - shows C or Assembly based on mode */}
+          {/* Buttons */}
+          <div className="flex gap-4 mt-4">
             {editorMode === "c" ? (
-              <textarea
-                className="input-field h-48 min-h-[120px] max-h-[400px] rounded-lg p-4 font-mono text-sm resize-y leading-relaxed"
-                value={cCode}
-                onChange={(e) => {
-                  setCCode(e.target.value);
-                  setCompileError(null);
-                }}
-                placeholder="Enter C code here..."
-              />
+              <button
+                onClick={handleCompileC}
+                disabled={!wasmLoaded}
+                className="btn-primary px-6 py-3 rounded-md"
+              >
+                Compile to Assembly →
+              </button>
             ) : (
-              <textarea
-                className="input-field h-48 min-h-[120px] max-h-[400px] rounded-lg p-4 font-mono text-sm resize-y leading-relaxed"
-                value={assembly}
-                onChange={(e) => {
-                  setAssembly(e.target.value);
-                  setProgramLoaded(false);
-                  setLoadError(null);
-                }}
-                placeholder="Enter LC-3b assembly here..."
-              />
-            )}
-
-            {/* Available Headers - only show in C mode */}
-            {editorMode === "c" && availableHeaders.length > 0 && (
-              <div className="mt-4">
-                <div className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-semibold mb-2">
-                  Available Headers
-                </div>
-                <div className="space-y-2">
-                  {availableHeaders.map((header) => (
-                    <div key={header} className="border border-[var(--border-color)] rounded-lg overflow-hidden">
-                      <button
-                        onClick={() => setExpandedHeader(expandedHeader === header ? null : header)}
-                        className="w-full px-3 py-2 text-left text-sm font-mono bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-between"
-                      >
-                        <span className="text-[var(--accent-primary)]">&lt;{header}&gt;</span>
-                        <span className="text-[var(--text-muted)]">
-                          {expandedHeader === header ? "▼" : "▶"}
-                        </span>
-                      </button>
-                      {expandedHeader === header && (
-                        <pre className="p-3 text-xs font-mono bg-[var(--bg-primary)] text-[var(--text-secondary)] overflow-x-auto max-h-64 overflow-y-auto">
-                          {get_header_contents(header) || "// Header not found"}
-                        </pre>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Buttons */}
-            <div className="flex gap-4 mt-4">
-              {editorMode === "c" ? (
+              <>
                 <button
-                  onClick={handleCompileC}
+                  onClick={handleLoadProgram}
                   disabled={!wasmLoaded}
                   className="btn-primary px-6 py-3 rounded-md"
                 >
-                  Compile to Assembly →
+                  Assemble and Load to Memory
                 </button>
-              ) : (
-                <>
-                  <button
-                    onClick={handleLoadProgram}
-                    disabled={!wasmLoaded}
-                    className="btn-primary px-6 py-3 rounded-md"
-                  >
-                    Assemble and Load to Memory
-                  </button>
-                  <button
-                    onClick={handleNextInstruction}
-                    disabled={!programLoaded || isHalted}
-                    title={!programLoaded ? "No program loaded" : isHalted ? "Program halted" : undefined}
-                    className="btn-secondary px-6 py-3 rounded-md"
-                  >
-                    Execute Next Instruction
-                  </button>
-                </>
-              )}
-            </div>
-
-            {/* Error displays */}
-            {compileError && editorMode === "c" && (
-              <div className="mt-4 p-4 bg-[var(--accent-error)]/10 border-2 border-[var(--accent-error)] rounded-lg">
-                <div className="text-[var(--accent-error)] font-semibold text-sm mb-1">Compile Error</div>
-                <pre className="text-[var(--accent-error)] text-sm font-mono whitespace-pre-wrap opacity-80">{compileError}</pre>
-              </div>
+                <button
+                  onClick={handleNextInstruction}
+                  disabled={!programLoaded || isHalted}
+                  title={!programLoaded ? "No program loaded" : isHalted ? "Program halted" : undefined}
+                  className="btn-secondary px-6 py-3 rounded-md"
+                >
+                  Execute Next Instruction
+                </button>
+              </>
             )}
-            {loadError && editorMode === "assembly" && (
-              <div className="mt-4 p-4 bg-[var(--accent-error)]/10 border-2 border-[var(--accent-error)] rounded-lg">
-                <div className="text-[var(--accent-error)] font-semibold text-sm mb-1">Assembly Error</div>
-                <pre className="text-[var(--accent-error)] text-sm font-mono whitespace-pre-wrap opacity-80">{loadError}</pre>
-              </div>
-            )}
-            {/* Console Output */}
-            {programLoaded && <Console output={consoleOutput} isHalted={isHalted} />}
           </div>
 
-          {/* Computer Panel */}
-          <div className="w-[400px] relative bg-[var(--bg-secondary)] border-l-2 border-[var(--border-contrast)] p-6 overflow-y-auto">
-            <div className="absolute inset-0 dither-pattern opacity-20 pointer-events-none" />
-            <div className="relative">
-              <ProgramCounter programCounter={pc} />
-              <ConditionCodes n={conditions.n} z={conditions.z} p={conditions.p} />
-              <RegisterSet registers={registers} modifiedRegister={modifiedRegister} />
-              {programLoaded && (
-                <MemoryViewer programCounter={pc} readMemory={handleReadMemory} />
-              )}
+          {/* Error displays */}
+          {compileError && editorMode === "c" && (
+            <div className="mt-4 p-4 bg-[var(--accent-error)]/10 border-2 border-[var(--accent-error)] rounded-lg">
+              <div className="text-[var(--accent-error)] font-semibold text-sm mb-1">Compile Error</div>
+              <pre className="text-[var(--accent-error)] text-sm font-mono whitespace-pre-wrap opacity-80">{compileError}</pre>
             </div>
+          )}
+          {loadError && editorMode === "assembly" && (
+            <div className="mt-4 p-4 bg-[var(--accent-error)]/10 border-2 border-[var(--accent-error)] rounded-lg">
+              <div className="text-[var(--accent-error)] font-semibold text-sm mb-1">Assembly Error</div>
+              <pre className="text-[var(--accent-error)] text-sm font-mono whitespace-pre-wrap opacity-80">{loadError}</pre>
+            </div>
+          )}
+          {/* Console Output */}
+          {programLoaded && <Console output={consoleOutput} isHalted={isHalted} />}
+        </div>
+
+        {/* Computer Panel */}
+        <div className="w-[400px] relative bg-[var(--bg-secondary)] border-l-2 border-[var(--border-contrast)] p-6 overflow-y-auto">
+          <div className="absolute inset-0 dither-pattern opacity-20 pointer-events-none" />
+          <div className="relative">
+            <ProgramCounter programCounter={pc} />
+            <ConditionCodes n={conditions.n} z={conditions.z} p={conditions.p} />
+            <RegisterSet registers={registers} modifiedRegister={modifiedRegister} />
+            {programLoaded && (
+              <MemoryViewer programCounter={pc} readMemory={handleReadMemory} />
+            )}
           </div>
         </div>
-      ) : activeTab === "instructions" ? (
-        <div className="flex-1 overflow-y-auto bg-[var(--bg-primary)]">
-          <Instructions />
-        </div>
-      ) : activeTab === "assembly" ? (
-        <div className="flex-1 overflow-y-auto bg-[var(--bg-primary)]">
-          <Assembly />
-        </div>
-      ) : activeTab === "samples" ? (
-        <div className="flex-1 overflow-y-auto bg-[var(--bg-primary)]">
-          <SamplePrograms 
-            onLoadSample={handleLoadSample}
-            activeSubtab={examplesSubtab}
-            onSubtabChange={setExamplesSubtab}
-          />
-        </div>
-      ) : activeTab === "agent" ? (
-        <div className="flex-1 overflow-y-auto bg-[var(--bg-primary)]">
-          <Agent />
-        </div>
-      ) : (
-        <div className="flex-1 overflow-y-auto bg-[var(--bg-primary)]">
-          <About />
-        </div>
-      )}
+      </div>
+
+      {/* Instructions Tab */}
+      <div className={`flex-1 overflow-y-auto bg-[var(--bg-primary)] ${activeTab === "instructions" ? "" : "hidden"}`}>
+        <Instructions />
+      </div>
+
+      {/* Assembly Tab */}
+      <div className={`flex-1 overflow-y-auto bg-[var(--bg-primary)] ${activeTab === "assembly" ? "" : "hidden"}`}>
+        <Assembly />
+      </div>
+
+      {/* Samples Tab */}
+      <div className={`flex-1 overflow-y-auto bg-[var(--bg-primary)] ${activeTab === "samples" ? "" : "hidden"}`}>
+        <SamplePrograms 
+          onLoadSample={handleLoadSample}
+          activeSubtab={examplesSubtab}
+          onSubtabChange={setExamplesSubtab}
+        />
+      </div>
+
+      {/* Agent Tab */}
+      <div className={`flex-1 overflow-y-auto bg-[var(--bg-primary)] ${activeTab === "agent" ? "" : "hidden"}`}>
+        <Agent />
+      </div>
+
+      {/* About Tab */}
+      <div className={`flex-1 overflow-y-auto bg-[var(--bg-primary)] ${activeTab === "about" ? "" : "hidden"}`}>
+        <About />
+      </div>
     </div>
   );
 }
