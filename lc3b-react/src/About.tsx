@@ -291,6 +291,13 @@ function HowItsBuiltTab() {
             </a>
             . Total download: ~140 KB gzipped (excluding the optional AI model).
           </p>
+          <p>
+            CI/CD runs on{" "}
+            <a href="https://github.com/lc3b/lc3b-rs/actions" target="_blank" rel="noopener noreferrer" className="text-[var(--accent-secondary)] hover:underline">
+              GitHub Actions
+            </a>
+            . With cached dependencies, builds complete in ~1 minute 15 seconds.
+          </p>
         </div>
       </section>
     </div>
