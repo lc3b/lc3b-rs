@@ -764,3 +764,16 @@ pre, code {
     background: var(--accent-primary);
     color: white;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Link Styles (TUI style - clearly distinguishable from emphasis)
+   ═══════════════════════════════════════════════════════════════════════════ */
+a {
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 2px;
+}
+
+a:hover {
+    text-decoration-style: solid;
+}

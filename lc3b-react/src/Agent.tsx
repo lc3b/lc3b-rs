@@ -406,7 +406,7 @@ export default function Agent() {
               <button 
                 onClick={enableAgent} 
                 disabled={!webGPUCheck.supported}
-                className="btn-primary w-full py-4 rounded-lg text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary w-full py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {webGPUCheck.supported 
                   ? `Enable AI Assistant (${MODEL_SIZE_GB} GB download)`
@@ -416,14 +416,14 @@ export default function Agent() {
                 <button
                   onClick={handleInspectCache}
                   disabled={isLoadingCache}
-                  className="flex-1 py-2 rounded-lg text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors disabled:opacity-50"
+                  className="flex-1 py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors disabled:opacity-50 border-2 border-[var(--border-color)]"
                 >
                   {isLoadingCache ? "Loading..." : "Inspect Cache"}
                 </button>
                 <button
                   onClick={handleClearCache}
                   disabled={isClearing}
-                  className="flex-1 py-2 rounded-lg text-sm text-[var(--text-muted)] hover:text-[var(--accent-error)] hover:bg-[var(--accent-error)]/10 transition-colors disabled:opacity-50"
+                  className="flex-1 py-2 text-sm text-[var(--text-muted)] hover:text-[var(--accent-error)] hover:bg-[var(--accent-error)]/10 transition-colors disabled:opacity-50 border-2 border-[var(--border-color)]"
                 >
                   {isClearing ? "Clearing..." : "Clear All Cache"}
                 </button>
@@ -482,7 +482,10 @@ export default function Agent() {
         <div className="p-4 border-b border-[var(--border-color)] bg-[var(--bg-secondary)]">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">System Prompt</h3>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-4">
+              <span className="text-xs font-mono text-[var(--text-muted)]">
+                {(new TextEncoder().encode(editedPrompt).length / 1024).toFixed(1)} KB
+              </span>
               <button onClick={handleResetPrompt} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">
                 Reset to Default
               </button>
@@ -491,7 +494,7 @@ export default function Agent() {
           <textarea
             value={editedPrompt}
             onChange={(e) => setEditedPrompt(e.target.value)}
-            className="input-field w-full h-48 rounded-lg p-3 font-mono text-xs resize-y"
+            className="input-field w-full h-48 p-3 font-mono text-xs resize-y"
             placeholder="Enter system prompt..."
           />
           <div className="flex justify-end gap-2 mt-2">
@@ -500,11 +503,11 @@ export default function Agent() {
                 setEditedPrompt(systemPrompt);
                 setShowPromptEditor(false);
               }}
-              className="btn-secondary px-3 py-1.5 rounded text-sm"
+              className="btn-secondary px-3 py-1.5 text-sm"
             >
               Cancel
             </button>
-            <button onClick={handleSavePrompt} className="btn-primary px-3 py-1.5 rounded text-sm">
+            <button onClick={handleSavePrompt} className="btn-primary px-3 py-1.5 text-sm">
               Save & Apply
             </button>
           </div>
@@ -538,7 +541,8 @@ export default function Agent() {
                     <button
                       key={suggestion}
                       onClick={() => setInputMessage(suggestion)}
-                      className="px-3 py-1.5 text-sm bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-full hover:border-[var(--accent-primary)] transition-colors"
+                      className="px-3 py-1.5 text-sm bg-[var(--bg-secondary)] border-2 border-[var(--border-color)] hover:border-[var(--accent-primary)] transition-colors"
+                      style={{ boxShadow: '2px 2px 0 var(--shadow-color)' }}
                     >
                       {suggestion}
                     </button>
@@ -584,12 +588,12 @@ export default function Agent() {
                 onChange={(e) => setInputMessage(e.target.value)}
                 placeholder={status === "running" ? "Thinking..." : "Ask about LC-3B..."}
                 disabled={status === "running"}
-                className="input-field flex-1 px-4 py-3 rounded-lg"
+                className="input-field flex-1 px-4 py-3"
               />
               <button
                 type="submit"
                 disabled={status === "running" || !inputMessage.trim()}
-                className="btn-primary px-6 py-3 rounded-lg"
+                className="btn-primary px-6 py-3"
               >
                 {status === "running" ? (
                   <span className="flex items-center gap-2">
@@ -637,7 +641,7 @@ function StatusBadge({ status }: { status: string }) {
   };
 
   return (
-    <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2 ${config.bg} ${config.text}`}>
+    <span className={`px-3 py-1 text-sm font-medium flex items-center gap-2 border-2 border-[var(--border-color)] ${config.bg} ${config.text}`}>
       {status === "downloading" && <LoadingSpinner />}
       {config.label}
     </span>
@@ -651,11 +655,12 @@ function ChatMessageBubble({ message }: { message: ChatMessage }) {
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[80%] rounded-lg p-4 ${
+        className={`max-w-[80%] p-4 border-2 ${
           isUser
-            ? "bg-[var(--accent-primary)] text-white"
-            : "bg-[var(--bg-secondary)] border border-[var(--border-color)]"
+            ? "bg-[var(--accent-primary)] text-white border-[var(--border-heavy)]"
+            : "bg-[var(--bg-secondary)] border-[var(--border-color)]"
         }`}
+        style={{ boxShadow: '3px 3px 0 var(--shadow-color)' }}
       >
         <div className={`text-sm whitespace-pre-wrap ${isUser ? "" : "text-[var(--text-primary)]"}`}>
           {message.content}
