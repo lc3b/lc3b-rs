@@ -16,7 +16,7 @@ fn test_trap_out() {
     ];
     computer.load_program(&program, 0x3000);
 
-    computer.run(100);
+    computer.run(100).unwrap();
 
     assert_eq!(computer.io().output(), "A");
     assert!(computer.io().is_halted());
@@ -60,7 +60,7 @@ fn test_trap_puts() {
     ];
     computer.load_program(&program, 0x3000);
 
-    computer.run(100);
+    computer.run(100).unwrap();
 
     assert_eq!(computer.io().output(), "Hi");
     assert!(computer.io().is_halted());
@@ -78,7 +78,7 @@ fn test_trap_getc() {
     ];
     computer.load_program(&program, 0x3000);
 
-    computer.run(100);
+    computer.run(100).unwrap();
 
     assert_eq!(computer.register(0), 'X' as u16);
     assert!(computer.io().is_halted());
@@ -94,7 +94,7 @@ fn test_trap_halt() {
     let program = vec![0xF025]; // TRAP x25 (HALT)
     computer.load_program(&program, 0x3000);
 
-    let count = computer.run(100);
+    let count = computer.run(100).unwrap();
 
     assert_eq!(count, 1);
     assert!(computer.io().is_halted());
@@ -113,7 +113,7 @@ fn test_run_stops_at_halt() {
     ];
     computer.load_program(&program, 0x3000);
 
-    let count = computer.run(100);
+    let count = computer.run(100).unwrap();
 
     assert_eq!(count, 4);
     assert_eq!(computer.register(1), 3);
@@ -154,7 +154,7 @@ fn test_lea_with_puts() {
     ];
     computer.load_program(&program, 0x3000);
 
-    computer.run(100);
+    computer.run(100).unwrap();
 
     assert_eq!(computer.io().output(), "Hi");
     assert!(computer.io().is_halted());
@@ -187,7 +187,7 @@ hello:
     let mut computer = Computer::new(BufferedIO::new());
     computer.load_program(&assembled.words, assembled.origin);
     
-    computer.run(100);
+    computer.run(100).unwrap();
     
     assert_eq!(computer.io().output(), "Hi");
     assert!(computer.io().is_halted());

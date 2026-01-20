@@ -1,6 +1,6 @@
 use lc3b_isa::{AddInstruction, AndInstruction, Condition, Instruction, PCOffset6, PCOffset9, PCOffset11, Register};
 
-use crate::{Memory, Observer, IO, USER_PROGRAM_START};
+use crate::{Error, Memory, Observer, IO, USER_PROGRAM_START};
 
 pub struct Computer<I: IO, O: Observer = ()> {
     program_counter: u16,
@@ -132,9 +132,9 @@ impl<I: IO, O: Observer> Computer<I, O> {
 
     // --- Execution ---
 
-    pub fn next_instruction(&mut self) {
+    pub fn next_instruction(&mut self) -> Result<(), Error> {
         if self.io.is_halted() {
-            return;
+            return Ok(());
         }
 
         let pc = self.program_counter;
@@ -143,30 +143,31 @@ impl<I: IO, O: Observer> Computer<I, O> {
         match Instruction::try_from(word) {
             Ok(inst) => {
                 self.observer.on_instruction_start(pc, &inst);
-                self.execute(inst);
+                self.execute(inst)?;
                 self.observer.on_instruction_end(pc, &inst);
 
                 // Increment PC
                 self.set_pc(self.program_counter.wrapping_add(1));
+                Ok(())
             }
-            Err(e) => {
-                eprintln!("Decode error at {:#06x}: {}", pc, e);
-            }
+            Err(e) => Err(Error::InstructionDecode {
+                address: pc,
+                reason: e.to_string(),
+            }),
         }
     }
 
     /// Run until halted or max_instructions reached
-    pub fn run(&mut self, max_instructions: usize) -> usize {
+    pub fn run(&mut self, max_instructions: usize) -> Result<usize, Error> {
         let mut count = 0;
         while !self.io.is_halted() && count < max_instructions {
-            self.next_instruction();
+            self.next_instruction()?;
             count += 1;
         }
-        count
+        Ok(count)
     }
 
-    #[allow(unused_variables)]
-    fn execute(&mut self, instruction: Instruction) {
+    fn execute(&mut self, instruction: Instruction) -> Result<(), Error> {
         match instruction {
             Instruction::AddInstruction(add_instruction) => {
                 self.perform_add_instruction(add_instruction);
@@ -192,7 +193,9 @@ impl<I: IO, O: Observer> Computer<I, O> {
             Instruction::Ldi(dr, base, offset) => {
                 self.perform_ldi_instruction(dr, base, offset);
             }
-            Instruction::Ldr(register, register1, pcoffset6) => todo!(),
+            Instruction::Ldr(dr, base, offset) => {
+                self.perform_ldr_instruction(dr, base, offset);
+            }
             Instruction::Lea(dr, pcoffset9) => {
                 self.perform_lea_instruction(dr, pcoffset9);
             }
@@ -203,10 +206,18 @@ impl<I: IO, O: Observer> Computer<I, O> {
                 // RET is just JMP R7
                 self.perform_jmp_instruction(Register::Register7);
             }
-            Instruction::Rti => todo!(),
-            Instruction::Shf(register, register1, bit, bit1, immediate4) => todo!(),
-            Instruction::Stb(register, register1, pcoffset6) => todo!(),
-            Instruction::Sti(register, register1, pcoffset6) => todo!(),
+            Instruction::Rti => {
+                return Err(Error::UnimplementedInstruction("RTI".to_string()));
+            }
+            Instruction::Shf(dr, sr, a, d, amount) => {
+                self.perform_shf_instruction(dr, sr, a, d, amount);
+            }
+            Instruction::Stb(sr, base, offset) => {
+                self.perform_stb_instruction(sr, base, offset);
+            }
+            Instruction::Sti(sr, base, offset) => {
+                self.perform_sti_instruction(sr, base, offset);
+            }
             Instruction::Stw(sr, base, offset) => {
                 self.perform_stw_instruction(sr, base, offset);
             }
@@ -214,6 +225,7 @@ impl<I: IO, O: Observer> Computer<I, O> {
                 self.perform_trap(trap_vect8.value());
             }
         }
+        Ok(())
     }
 
     // --- Instruction implementations ---
@@ -395,6 +407,91 @@ impl<I: IO, O: Observer> Computer<I, O> {
 
         // Read the value at the target address
         let result = self.memory.read_word(target_address);
+
+        self.store_register(dr, result);
+        self.set_condition_codes(result);
+    }
+
+    pub fn perform_ldr_instruction(&mut self, dr: Register, base: Register, offset: PCOffset6) {
+        // LDR: DR = mem[BaseR + LSHF(SEXT(offset6), 1)]
+        let base_val = self.load_register(base);
+        let signed_offset = offset.sign_extend();
+        let shifted_offset = (signed_offset << 1) as u16; // LSHF by 1 for word alignment
+        let address = base_val.wrapping_add(shifted_offset);
+        let result = self.memory.read_word(address);
+        self.store_register(dr, result);
+        self.set_condition_codes(result);
+    }
+
+    pub fn perform_stb_instruction(&mut self, sr: Register, base: Register, offset: PCOffset6) {
+        // STB: mem[BaseR + SEXT(offset6)] = SR[7:0]
+        // Note: No shift for byte addressing
+        let base_val = self.load_register(base);
+        let signed_offset = offset.sign_extend();
+        let byte_address = base_val.wrapping_add(signed_offset as u16);
+
+        // Get the low byte of the source register
+        let byte_value = (self.load_register(sr) & 0xFF) as u8;
+
+        // LC-3b memory is word-addressed internally, so we need to:
+        // 1. Get the word address (byte_address >> 1)
+        // 2. Read the existing word
+        // 3. Replace the appropriate byte
+        // 4. Write the word back
+        let word_address = byte_address >> 1;
+        let existing_word = self.memory.read_word(word_address);
+
+        let new_word = if byte_address & 1 == 0 {
+            // Even address: replace low byte (bits [7:0])
+            (existing_word & 0xFF00) | (byte_value as u16)
+        } else {
+            // Odd address: replace high byte (bits [15:8])
+            (existing_word & 0x00FF) | ((byte_value as u16) << 8)
+        };
+
+        self.memory.write_word(word_address, new_word);
+    }
+
+    pub fn perform_sti_instruction(&mut self, sr: Register, base: Register, offset: PCOffset6) {
+        // STI: mem[mem[BaseR + LSHF(SEXT(offset6), 1)]] = SR
+        // First, compute the address of the pointer
+        let base_val = self.load_register(base);
+        let signed_offset = offset.sign_extend();
+        let shifted_offset = (signed_offset << 1) as u16; // LSHF by 1 for word alignment
+        let pointer_address = base_val.wrapping_add(shifted_offset);
+
+        // Read the pointer (target address) from memory
+        let target_address = self.memory.read_word(pointer_address);
+
+        // Write the value to the target address
+        let value = self.load_register(sr);
+        self.memory.write_word(target_address, value);
+    }
+
+    pub fn perform_shf_instruction(
+        &mut self,
+        dr: Register,
+        sr: Register,
+        a: lc3b_isa::Bit,
+        d: lc3b_isa::Bit,
+        amount: lc3b_isa::Immediate4,
+    ) {
+        // SHF: Shift instruction
+        // d=0: left shift, d=1: right shift
+        // a=0: logical (zero fill), a=1: arithmetic (sign extend for right shift)
+        let value = self.load_register(sr);
+        let shift_amount = amount.0 as u32;
+
+        let result = if !d.value() {
+            // Left shift (LSHF)
+            value << shift_amount
+        } else if !a.value() {
+            // Right shift logical (RSHFL)
+            value >> shift_amount
+        } else {
+            // Right shift arithmetic (RSHFA)
+            ((value as i16) >> shift_amount) as u16
+        };
 
         self.store_register(dr, result);
         self.set_condition_codes(result);

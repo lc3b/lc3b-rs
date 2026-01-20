@@ -74,13 +74,13 @@ impl WasmComputer {
         Ok(())
     }
 
-    pub fn next_instruction(&mut self) {
+    pub fn next_instruction(&mut self) -> Result<(), String> {
         self.inner.observer_mut().reset_instruction_state();
-        self.inner.next_instruction();
+        self.inner.next_instruction().map_err(|e| e.to_string())
     }
 
-    pub fn run(&mut self, max_instructions: usize) -> usize {
-        self.inner.run(max_instructions)
+    pub fn run(&mut self, max_instructions: usize) -> Result<usize, String> {
+        self.inner.run(max_instructions).map_err(|e| e.to_string())
     }
 
     // --- State accessors ---

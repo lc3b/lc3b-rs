@@ -505,6 +505,16 @@ impl PCOffset6 {
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Bit(bool);
 
+impl Bit {
+    pub fn new(value: bool) -> Self {
+        Bit(value)
+    }
+
+    pub fn value(&self) -> bool {
+        self.0
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct TrapVect8(pub u8);
 
