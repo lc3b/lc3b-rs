@@ -16,7 +16,7 @@ function getStepFromProgress(progressText: string | undefined): number {
   if (!progressText) return 0;
   const text = progressText.toLowerCase();
   if (text.includes("loading model from cache") || text.includes("fetching param")) {
-    return 1; // Downloading
+    return 1; // Loading (from cache or network)
   }
   if (text.includes("compil") || text.includes("shader")) {
     return 2; // Compiling
@@ -24,7 +24,14 @@ function getStepFromProgress(progressText: string | undefined): number {
   if (text.includes("loading gpu") || text.includes("gpu shader") || text.includes("finish loading")) {
     return 3; // Loading to GPU
   }
-  return 1; // Default to downloading
+  return 1; // Default to loading
+}
+
+// Check if progress text indicates loading from cache (not network)
+function isLoadingFromCache(progressText: string | undefined): boolean {
+  if (!progressText) return false;
+  const text = progressText.toLowerCase();
+  return text.includes("loading model from cache") || text.includes("from cache");
 }
 
 // Check WebGPU support
@@ -232,9 +239,9 @@ export default function Agent() {
             progressPercent={downloadProgress?.progress}
           />
 
-          {/* Safe to navigate notice - shown when downloading */}
+          {/* Safe to navigate notice - shown when downloading/loading */}
           {status === "downloading" && (
-            <div className="p-4 bg-[var(--accent-success)]/10 border-2 border-[var(--accent-success)] rounded-lg">
+            <div className="p-4 bg-[var(--accent-success)]/10 border-2 border-[var(--accent-success)]">
               <div className="flex items-start gap-3">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -252,10 +259,14 @@ export default function Agent() {
                   <polyline points="22 4 12 14.01 9 11.01" />
                 </svg>
                 <div>
-                  <h3 className="font-semibold text-[var(--accent-success)]">Safe to Navigate Away</h3>
+                  <h3 className="font-semibold text-[var(--accent-success)]">
+                    {isLoadingFromCache(downloadProgress?.text) ? "Loading from Cache" : "Safe to Navigate Away"}
+                  </h3>
                   <p className="text-sm text-[var(--text-secondary)] mt-1">
-                    Feel free to use the simulator while the model downloads! The download will continue 
-                    in the background. The Agent status indicator in the header will turn green when ready.
+                    {isLoadingFromCache(downloadProgress?.text) 
+                      ? "Model files are cached locally. WebLLM is reading from disk and compiling GPU shaders. This takes 30-60 seconds even without network transfer."
+                      : "Feel free to use the simulator while the model downloads! The download will continue in the background. The Agent status indicator in the header will turn green when ready."
+                    }
                   </p>
                 </div>
               </div>
@@ -264,7 +275,7 @@ export default function Agent() {
 
           {/* Warning Banner - only when not yet downloading */}
           {status === "disabled" && (
-            <div className="p-4 bg-[var(--accent-warning)]/10 border-2 border-[var(--accent-warning)] rounded-lg">
+            <div className="p-4 bg-[var(--accent-warning)]/10 border-2 border-[var(--accent-warning)]">
               <div className="flex items-start gap-3">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -704,8 +715,11 @@ function StepProgressDiagram({ status, progressText, progressPercent }: StepProg
     return getStepFromProgress(progressText);
   }, [status, progressText]);
 
+  const fromCache = isLoadingFromCache(progressText);
+
+  // Adjust labels based on whether we're loading from cache or downloading
   const steps = [
-    { id: 1, label: "Download", description: "Fetch model files" },
+    { id: 1, label: fromCache ? "Load" : "Download", description: fromCache ? "Read from cache" : "Fetch model files" },
     { id: 2, label: "Compile", description: "Build GPU shaders" },
     { id: 3, label: "Load GPU", description: "Transfer to graphics card" },
     { id: 4, label: "Ready", description: "Inference can run" },
