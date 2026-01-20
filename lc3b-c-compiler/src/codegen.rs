@@ -131,6 +131,8 @@ struct Compiler {
     defined_functions: std::collections::HashSet<String>,
     /// Set of defined global variable names
     defined_globals: std::collections::HashSet<String>,
+    /// Set of globals initialized with string literals (these point directly to the string, not a pointer)
+    string_globals: std::collections::HashSet<String>,
     /// Count of words emitted (for alignment)
     word_count: usize,
     /// Functions that can be inlined (maps name to inline info)
@@ -273,6 +275,7 @@ impl Compiler {
             current_function: String::new(),
             defined_functions: std::collections::HashSet::new(),
             defined_globals: std::collections::HashSet::new(),
+            string_globals: std::collections::HashSet::new(),
             word_count: 0,
             inlineable_functions: HashMap::new(),
         }
@@ -322,6 +325,10 @@ impl Compiler {
                 TopLevelItem::GlobalDeclaration(d) => {
                     for declarator in &d.declarators {
                         self.defined_globals.insert(declarator.name.clone());
+                        // Track globals initialized with string literals
+                        if let Some(Initializer::String(_)) = &declarator.initializer {
+                            self.string_globals.insert(declarator.name.clone());
+                        }
                     }
                 }
                 TopLevelItem::Include(_) => {}
@@ -767,7 +774,11 @@ impl Compiler {
                 } else if self.defined_globals.contains(name) {
                     // Global variable
                     self.emit_instruction(&format!("LEA R0, {}", name));
-                    self.emit_instruction("LDW R0, R0, #0");
+                    // String-initialized globals point directly to the string data,
+                    // so we don't need to dereference - LEA gives us the address directly
+                    if !self.string_globals.contains(name) {
+                        self.emit_instruction("LDW R0, R0, #0");
+                    }
                 } else {
                     return Err(CompileError {
                         message: format!("undefined variable '{}'", name),
@@ -1460,6 +1471,43 @@ mod tests {
         let result = compile(source, &CompileOptions::default()).unwrap();
         println!("{}", result);
         assert!(result.contains(".STRINGZ \"Hello\""));
+    }
+
+    #[test]
+    fn test_global_string_pointer() {
+        // Global string pointers should use LEA only, not LEA+LDW
+        // because the label points directly to the string data
+        let source = r#"
+            #include <lc3b-io.h>
+            char *hello = "Hello, LC-3b!";
+            int main() {
+                puts(hello);
+                return 0;
+            }
+        "#;
+        let result = compile(source, &CompileOptions::default()).unwrap();
+        println!("{}", result);
+        
+        // Should have the string at the hello label
+        assert!(result.contains("hello:"));
+        assert!(result.contains(".STRINGZ \"Hello, LC-3b!\""));
+        
+        // Should have LEA R0, hello
+        assert!(result.contains("LEA R0, hello"));
+        
+        // Should NOT have LDW R0, R0, #0 immediately after LEA R0, hello
+        // (that would be double-dereferencing)
+        let lines: Vec<&str> = result.lines().collect();
+        for (i, line) in lines.iter().enumerate() {
+            if line.contains("LEA R0, hello") {
+                if i + 1 < lines.len() {
+                    assert!(
+                        !lines[i + 1].contains("LDW R0, R0, #0"),
+                        "Should not dereference string global pointer"
+                    );
+                }
+            }
+        }
     }
 
     #[test]
