@@ -307,25 +307,26 @@ function ArchitectureTab() {
         <h2 className="text-xl font-semibold text-[var(--accent-secondary)] mb-3">System Overview</h2>
         <div className="bg-[var(--bg-primary)] rounded-lg p-4 font-mono text-xs overflow-x-auto">
           <pre className="text-[var(--text-primary)] leading-relaxed whitespace-pre">{`
-┌─────────────────────────────────────────────────────────────┐
-│                       Web Browser                           │
-│                                                             │
-│  ┌─────────────────────┐      ┌─────────────────────────┐   │
-│  │   React Frontend    │      │   WebLLM (AI Agent)     │   │
-│  │   (TypeScript)      │      │   (WebGPU)              │   │
-│  └──────────┬──────────┘      └─────────────────────────┘   │
-│             │                                               │
-│             │ wasm-bindgen                                  │
-│             ▼                                               │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │              WebAssembly Module (Rust)              │   │
-│  │                                                     │   │
-│  │  ┌───────────┐  ┌────────────┐  ┌───────────────┐   │   │
-│  │  │ Assembler │  │ C Compiler │  │   Emulator    │   │   │
-│  │  └───────────┘  └────────────┘  └───────────────┘   │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+╔═ Web Browser ════════════════════════════════════════════════════╗
+║                                                                  ║░
+║  ┏━━━━━━━━━━━━━━━━━━━━┓        ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┓     ║░
+║  ┃  React Frontend    ┃        ┃   WebLLM (AI Agent)       ┃     ║░
+║  ┃  (TypeScript)      ┃        ┃   (WebGPU)                ┃     ║░
+║  ┗━━━━━━━━━┳━━━━━━━━━━┛        ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━┛     ║░
+║            ┃                                                     ║░
+║            ┃ wasm-bindgen                                        ║░
+║            ▼                                                     ║░
+║  ╔═ WebAssembly Module (Rust) ═══════════════════════════════╗   ║░
+║  ║                                                           ║░  ║░
+║  ║  ┏━━━━━━━━━━━━━┓  ┏━━━━━━━━━━━━━━┓  ┏━━━━━━━━━━━━━━━━┓    ║░  ║░
+║  ║  ┃  Assembler  ┃  ┃  C Compiler  ┃  ┃    Emulator    ┃    ║░  ║░
+║  ║  ┗━━━━━━━━━━━━━┛  ┗━━━━━━━━━━━━━━┛  ┗━━━━━━━━━━━━━━━━┛    ║░  ║░
+║  ║                                                           ║░  ║░
+║  ╚═══════════════════════════════════════════════════════════╝░  ║░
+║   ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   ║░
+║                                                                  ║░
+╚══════════════════════════════════════════════════════════════════╝░
+ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 `}</pre>
         </div>
       </section>
@@ -335,34 +336,35 @@ function ArchitectureTab() {
         <h2 className="text-xl font-semibold text-[var(--accent-secondary)] mb-3">Rust Crate Structure</h2>
         <div className="bg-[var(--bg-primary)] rounded-lg p-4 font-mono text-xs overflow-x-auto">
           <pre className="text-[var(--text-primary)] leading-relaxed whitespace-pre">{`
-                    ┌─────────────────────────────────────┐
-                    │               lc3b                  │
-                    │  (WASM bindings + Computer struct)  │
-                    └──────────────────┬──────────────────┘
-                                       │
-              ┌────────────────────────┼────────────────────────┐
+                      ╔═ lc3b ═══════════════════════════════╗
+                      ║  WASM bindings + Computer struct     ║░
+                      ╚════════════════╦════════════════════╝░
+                       ░░░░░░░░░░░░░░░░║░░░░░░░░░░░░░░░░░░░░░░
+              ┌────────────────────────╬────────────────────────┐
               │                        │                        │
               ▼                        ▼                        ▼
-┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐
-│   lc3b-assembler    │  │   lc3b-c-compiler   │  │      lc3b-isa       │
-│                     │  │                     │  │                     │
-│  Assembly → Binary  │  │   C → Assembly      │  │  Instruction types  │
-└──────────┬──────────┘  └──────────┬──────────┘  │  Encode/Decode      │
-           │                        │             └─────────────────────┘
-           │                        │                        ▲
-           │                        ▼                        │
-           │             ┌─────────────────────┐             │
-           │             │    lc3b-c-ast       │             │
-           │             │                     │             │
-           │             │  AST types for C    │             │
-           │             └──────────┬──────────┘             │
-           │                        │                        │
-           │                        ▼                        │
-           │             ┌─────────────────────┐             │
-           │             │   lc3b-c-grammar    │             │
-           │             │                     │             │
-           │             │  PEG parser (pest)  │             │
-           └─────────────┴─────────────────────┴─────────────┘
+┏━━━━━━━━━━━━━━━━━━━━━┓  ┏━━━━━━━━━━━━━━━━━━━━━┓  ╔═ lc3b-isa ═════════╗
+┃   lc3b-assembler    ┃  ┃   lc3b-c-compiler   ┃  ║                    ║░
+┃                     ┃░ ┃                     ┃░ ║  Instruction types ║░
+┃  Assembly → Binary  ┃░ ┃   C → Assembly      ┃░ ║  Encode/Decode     ║░
+┗━━━━━━━━━━┳━━━━━━━━━━┛░ ┗━━━━━━━━━━┳━━━━━━━━━━┛░ ╚════════════════════╝░
+ ░░░░░░░░░░║░░░░░░░░░░░░  ░░░░░░░░░░║░░░░░░░░░░░░  ░░░░░░░░░▲░░░░░░░░░░░
+           │                        │                       │
+           │                        ▼                       │
+           │             ┏━━━━━━━━━━━━━━━━━━━━━┓            │
+           │             ┃    lc3b-c-ast       ┃            │
+           │             ┃                     ┃░           │
+           │             ┃  AST types for C    ┃░           │
+           │             ┗━━━━━━━━━━┳━━━━━━━━━━┛░           │
+           │              ░░░░░░░░░░║░░░░░░░░░░░░           │
+           │                        ▼                       │
+           │             ┏━━━━━━━━━━━━━━━━━━━━━┓            │
+           │             ┃   lc3b-c-grammar    ┃            │
+           │             ┃                     ┃░           │
+           │             ┃  PEG parser (pest)  ┃░           │
+           │             ┗━━━━━━━━━━━━━━━━━━━━━┛░           │
+           │              ░░░░░░░░░░░░░░░░░░░░░░░           │
+           └───────────────────────┴───────────────────────┘
 `}</pre>
         </div>
       </section>
@@ -372,15 +374,16 @@ function ArchitectureTab() {
         <h2 className="text-xl font-semibold text-[var(--accent-secondary)] mb-3">Assembly Pipeline</h2>
         <div className="bg-[var(--bg-primary)] rounded-lg p-4 font-mono text-xs overflow-x-auto">
           <pre className="text-[var(--text-primary)] leading-relaxed whitespace-pre">{`
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Assembly   │     │   Pass 1     │     │   Pass 2     │     │   Binary     │
-│    Source    │────►│   (Symbols)  │────►│   (Codegen)  │────►│   Words      │
-│              │     │              │     │              │     │              │
-│  .ORIG x3000 │     │ Build symbol │     │ Resolve refs │     │  [0x3000]:   │
-│  LD R0, VAL  │     │ table with   │     │ Encode each  │     │    0x2001    │
-│  HALT        │     │ addresses    │     │ instruction  │     │    0xF025    │
-│  VAL .FILL 5 │     │              │     │              │     │    0x0005    │
-└──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
+╔══════════════╗     ┏━━━━━━━━━━━━━━┓     ┏━━━━━━━━━━━━━━┓     ╔══════════════╗
+║   Assembly   ║     ┃   Pass 1     ┃     ┃   Pass 2     ┃     ║   Binary     ║
+║    Source    ║────▶┃   (Symbols)  ┃────▶┃   (Codegen)  ┃────▶║   Words      ║
+║              ║░    ┃              ┃░    ┃              ┃░    ║              ║░
+║  .ORIG x3000 ║░    ┃ Build symbol ┃░    ┃ Resolve refs ┃░    ║  [0x3000]:   ║░
+║  LD R0, VAL  ║░    ┃ table with   ┃░    ┃ Encode each  ┃░    ║    0x2001    ║░
+║  HALT        ║░    ┃ addresses    ┃░    ┃ instruction  ┃░    ║    0xF025    ║░
+║  VAL .FILL 5 ║░    ┃              ┃░    ┃              ┃░    ║    0x0005    ║░
+╚══════════════╝░    ┗━━━━━━━━━━━━━━┛░    ┗━━━━━━━━━━━━━━┛░    ╚══════════════╝░
+ ░░░░░░░░░░░░░░░░     ░░░░░░░░░░░░░░░░     ░░░░░░░░░░░░░░░░     ░░░░░░░░░░░░░░░░
 `}</pre>
         </div>
       </section>
@@ -390,16 +393,17 @@ function ArchitectureTab() {
         <h2 className="text-xl font-semibold text-[var(--accent-secondary)] mb-3">C Compilation Pipeline</h2>
         <div className="bg-[var(--bg-primary)] rounded-lg p-4 font-mono text-xs overflow-x-auto">
           <pre className="text-[var(--text-primary)] leading-relaxed whitespace-pre">{`
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   C Source   │     │    Parse     │     │   Codegen    │     │   Assembly   │
-│              │────►│    (pest)    │────►│              │────►│              │
-│              │     │              │     │              │     │              │
-│  int main(){ │     │  Program     │     │  Register    │     │  .ORIG x3000 │
-│    int x = 5;│     │    Function  │     │  allocation  │     │  AND R0,R0,0 │
-│    return x; │     │      Block   │     │  Stack frame │     │  ADD R0,R0,5 │
-│  }           │     │        Decl  │     │  management  │     │  HALT        │
-│              │     │        Ret   │     │              │     │  .END        │
-└──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
+╔══════════════╗     ┏━━━━━━━━━━━━━━┓     ┏━━━━━━━━━━━━━━┓     ╔══════════════╗
+║   C Source   ║     ┃    Parse     ┃     ┃   Codegen    ┃     ║   Assembly   ║
+║              ║────▶┃    (pest)    ┃────▶┃              ┃────▶║              ║
+║              ║░    ┃              ┃░    ┃              ┃░    ║              ║░
+║  int main(){ ║░    ┃  Program     ┃░    ┃  Register    ┃░    ║  .ORIG x3000 ║░
+║    int x = 5;║░    ┃    Function  ┃░    ┃  allocation  ┃░    ║  AND R0,R0,0 ║░
+║    return x; ║░    ┃      Block   ┃░    ┃  Stack frame ┃░    ║  ADD R0,R0,5 ║░
+║  }           ║░    ┃        Decl  ┃░    ┃  management  ┃░    ║  HALT        ║░
+║              ║░    ┃        Ret   ┃░    ┃              ┃░    ║  .END        ║░
+╚══════════════╝░    ┗━━━━━━━━━━━━━━┛░    ┗━━━━━━━━━━━━━━┛░    ╚══════════════╝░
+ ░░░░░░░░░░░░░░░░     ░░░░░░░░░░░░░░░░     ░░░░░░░░░░░░░░░░     ░░░░░░░░░░░░░░░░
 `}</pre>
         </div>
       </section>
@@ -409,38 +413,35 @@ function ArchitectureTab() {
         <h2 className="text-xl font-semibold text-[var(--accent-secondary)] mb-3">CPU Execution Cycle</h2>
         <div className="bg-[var(--bg-primary)] rounded-lg p-4 font-mono text-xs overflow-x-auto">
           <pre className="text-[var(--text-primary)] leading-relaxed whitespace-pre">{`
-                    ┌─────────────────────────────────────┐
-                    │            FETCH                    │
-                    │   instruction = memory[PC]          │
-                    └──────────────────┬──────────────────┘
-                                       │
-                                       ▼
-                    ┌─────────────────────────────────────┐
-                    │            DECODE                   │
-                    │   PC = PC + 1  (word increment)     │
-                    │   opcode = instruction[15:12]       │
-                    │   extract operands based on opcode  │
-                    └──────────────────┬──────────────────┘
-                                       │
-                                       ▼
-                    ┌─────────────────────────────────────┐
-                    │           EXECUTE                   │
-                    │                                     │
-                    │   ADD: DR = SR1 + SR2/imm5          │
-                    │   LD:  DR = memory[PC + offset9]    │
-                    │   BR:  if(cond) PC = PC + offset9   │
-                    │   ...                               │
-                    └──────────────────┬──────────────────┘
-                                       │
-                                       ▼
-                    ┌─────────────────────────────────────┐
-                    │       UPDATE CONDITION CODES        │
-                    │   (for ALU and load operations)     │
-                    │                                     │
-                    │   N = (result < 0)                  │
-                    │   Z = (result == 0)                 │
-                    │   P = (result > 0)                  │
-                    └─────────────────────────────────────┘
+                    ╔═ FETCH ═════════════════════════════╗
+                    ║   instruction = memory[PC]          ║░
+                    ╚═════════════════╦═══════════════════╝░
+                     ░░░░░░░░░░░░░░░░░║░░░░░░░░░░░░░░░░░░░░░
+                                      ▼
+                    ┏━ DECODE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+                    ┃   PC = PC + 1  (word increment)     ┃░
+                    ┃   opcode = instruction[15:12]       ┃░
+                    ┃   extract operands based on opcode  ┃░
+                    ┗━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━┛░
+                     ░░░░░░░░░░░░░░░░░║░░░░░░░░░░░░░░░░░░░░░
+                                      ▼
+                    ┏━ EXECUTE ━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+                    ┃                                     ┃░
+                    ┃   ADD: DR = SR1 + SR2/imm5          ┃░
+                    ┃   LD:  DR = memory[PC + offset9]    ┃░
+                    ┃   BR:  if(cond) PC = PC + offset9   ┃░
+                    ┃   ...                               ┃░
+                    ┗━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━┛░
+                     ░░░░░░░░░░░░░░░░░║░░░░░░░░░░░░░░░░░░░░░
+                                      ▼
+                    ╔═ UPDATE CONDITION CODES ════════════╗
+                    ║   (for ALU and load operations)     ║░
+                    ║                                     ║░
+                    ║   N = (result < 0)                  ║░
+                    ║   Z = (result == 0)                 ║░
+                    ║   P = (result > 0)                  ║░
+                    ╚═════════════════════════════════════╝░
+                     ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 `}</pre>
         </div>
       </section>
@@ -450,28 +451,28 @@ function ArchitectureTab() {
         <h2 className="text-xl font-semibold text-[var(--accent-secondary)] mb-3">React-WASM Integration</h2>
         <div className="bg-[var(--bg-primary)] rounded-lg p-4 font-mono text-xs overflow-x-auto">
           <pre className="text-[var(--text-primary)] leading-relaxed whitespace-pre">{`
-┌─────────────────────────────┐         ┌─────────────────────────────┐
-│     React (Computer.tsx)    │         │     WASM (wasm/mod.rs)      │
-│                             │         │                             │
-│  computerRef = useRef()     │         │                             │
-│                             │         │                             │
-│  // Load program            │         │                             │
-│  computerRef.current =      │────────►│  new_computer(asm, cbs)     │
-│    new_computer(asm, cbs)   │         │    → assembler.parse()      │
-│                             │         │    → Computer::new()        │
-│                             │         │    → load_program()         │
-│  // Step execution          │         │                             │
-│  next_instruction(cpu)      │────────►│  next_instruction(cpu)      │
-│                             │         │    → fetch()                │
-│                             │         │    → decode()               │
-│  // Read state              │         │    → execute()              │
-│  pc = program_counter(cpu)  │◄────────│  program_counter()          │
-│  r0 = register0(cpu)        │◄────────│  register0()                │
-│  n = condition_n(cpu)       │◄────────│  condition_n()              │
-│                             │         │                             │
-│  setState({ pc, r0, n })    │         │                             │
-│  // React re-renders UI     │         │                             │
-└─────────────────────────────┘         └─────────────────────────────┘
+╔═ React (Computer.tsx) ══════════╗         ╔═ WASM (wasm/mod.rs) ═════════╗
+║                                 ║         ║                              ║░
+║  computerRef = useRef()         ║         ║                              ║░
+║                                 ║         ║                              ║░
+║  // Load program                ║         ║                              ║░
+║  computerRef.current =          ║────────▶║  new_computer(asm, cbs)      ║░
+║    new_computer(asm, cbs)       ║         ║    → assembler.parse()       ║░
+║                                 ║         ║    → Computer::new()         ║░
+║                                 ║         ║    → load_program()          ║░
+║  // Step execution              ║         ║                              ║░
+║  next_instruction(cpu)          ║────────▶║  next_instruction(cpu)       ║░
+║                                 ║         ║    → fetch()                 ║░
+║                                 ║         ║    → decode()                ║░
+║  // Read state                  ║         ║    → execute()               ║░
+║  pc = program_counter(cpu)      ║◀────────║  program_counter()           ║░
+║  r0 = register0(cpu)            ║◀────────║  register0()                 ║░
+║  n = condition_n(cpu)           ║◀────────║  condition_n()               ║░
+║                                 ║         ║                              ║░
+║  setState({ pc, r0, n })        ║         ║                              ║░
+║  // React re-renders UI         ║         ║                              ║░
+╚═════════════════════════════════╝         ╚══════════════════════════════╝░
+ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░          ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 `}</pre>
         </div>
       </section>
@@ -481,38 +482,33 @@ function ArchitectureTab() {
         <h2 className="text-xl font-semibold text-[var(--accent-secondary)] mb-3">AI Agent Data Flow</h2>
         <div className="bg-[var(--bg-primary)] rounded-lg p-4 font-mono text-xs overflow-x-auto">
           <pre className="text-[var(--text-primary)] leading-relaxed whitespace-pre">{`
-┌─────────────────┐   ┌─────────────────┐   ┌─────────────────────────────┐
-│  User Message   │   │  Simulator      │   │        WebLLM               │
-│                 │   │  State          │   │     (Browser GPU)           │
-└────────┬────────┘   └────────┬────────┘   └──────────────┬──────────────┘
-         │                     │                           │
-         │     ┌───────────────┴───────────────┐           │
-         │     │      AgentContext.tsx         │           │
-         │     │                               │           │
-         └────►│  1. Capture simulator state   │           │
-               │     (PC, registers, code)     │           │
-               │                               │           │
-               │  2. Build system prompt with  │           │
-               │     LC-3b ISA reference       │           │
-               │                               │           │
-               │  3. Inject state + user msg   │──────────►│
-               │                               │           │
-               │  4. Stream response tokens    │◄──────────│
-               │     Update UI in real-time    │           │
-               │                               │           │
-               │  5. Track tok/s metrics       │           │
-               └───────────────────────────────┘           │
-                                                           │
-                              ┌─────────────────────────────┘
-                              │
-                              ▼
-               ┌───────────────────────────────┐
-               │   Hermes-3-Llama-3.1-8B       │
-               │   (4.3 GB, cached locally)    │
-               │                               │
-               │   Inference via WebGPU        │
-               │   No server communication     │
-               └───────────────────────────────┘
+┏━━━━━━━━━━━━━━━━━┓   ┏━━━━━━━━━━━━━━━━━┓   ╔═ WebLLM ═══════════════════════╗
+┃  User Message   ┃   ┃  Simulator      ┃   ║       (Browser GPU)            ║░
+┃                 ┃░  ┃  State          ┃░  ╚════════════════╦═══════════════╝░
+┗━━━━━━━━┳━━━━━━━━┛░  ┗━━━━━━━━┳━━━━━━━━┛░   ░░░░░░░░░░░░░░░░║░░░░░░░░░░░░░░░░░
+ ░░░░░░░░║░░░░░░░░░░   ░░░░░░░░║░░░░░░░░░░                   ║
+         │                     │                             ║
+         │     ╔═ AgentContext.tsx ═════════════════╗        ║
+         │     ║                                    ║░       ║
+         └────▶║  1. Capture simulator state        ║░       ║
+               ║     (PC, registers, code)          ║░       ║
+               ║                                    ║░       ║
+               ║  2. Build system prompt with       ║░       ║
+               ║     LC-3b ISA reference            ║░       ║
+               ║                                    ║░       ║
+               ║  3. Inject state + user msg        ║───────▶║
+               ║                                    ║░       ║
+               ║  4. Stream response tokens         ║◀───────║
+               ║     Update UI in real-time         ║░       ║
+               ║                                    ║░       ▼
+               ║  5. Track tok/s metrics            ║░  ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+               ╚════════════════════════════════════╝░  ┃  Hermes-3-Llama-3.1-8B      ┃
+                ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ┃  (4.3 GB, cached locally)   ┃░
+                                                        ┃                             ┃░
+                                                        ┃  Inference via WebGPU       ┃░
+                                                        ┃  No server communication    ┃░
+                                                        ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛░
+                                                         ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 `}</pre>
         </div>
       </section>
