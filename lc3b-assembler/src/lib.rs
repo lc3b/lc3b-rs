@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, str::FromStr};
 
-use lc3b_isa::{AddInstruction, AndInstruction, Condition, Immediate5, Instruction, PCOffset6, PCOffset9, PCOffset11, Register, TrapVect8};
+use lc3b_isa::{AddInstruction, AndInstruction, Condition, Immediate5, Instruction, PCOffset6, PCOffset9, PCOffset11, Register, TrapVect8, XorInstruction};
 use pest::{
     iterators::{Pair, Pairs},
     Parser,
@@ -386,6 +386,7 @@ impl Assembler {
                 Instruction::AndInstruction(inner)
             }
             "NOT" => {
+                // NOT is XOR with immediate -1 (0x1F sign-extended = 0xFFFF)
                 let mut operands = inner.next().unwrap().into_inner();
                 let arg_one = operands.next().unwrap().as_str();
                 let dst_reg = Register::from_str(arg_one)?;
@@ -393,7 +394,9 @@ impl Assembler {
                 let arg_two = operands.next().unwrap().as_str();
                 let src_reg = Register::from_str(arg_two)?;
 
-                Instruction::Not(dst_reg, src_reg)
+                // NOT DR, SR is encoded as XOR DR, SR, #-1
+                let imm5 = Immediate5::from_signed(-1)?;
+                Instruction::XorInstruction(XorInstruction::XorImm(dst_reg, src_reg, imm5))
             }
             "JSR" => {
                 let mut operands = inner.next().unwrap().into_inner();

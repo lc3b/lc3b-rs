@@ -1,4 +1,4 @@
-use lc3b_isa::{AddInstruction, AndInstruction, Condition, Instruction, PCOffset6, PCOffset9, PCOffset11, Register};
+use lc3b_isa::{AddInstruction, AndInstruction, Condition, Instruction, PCOffset6, PCOffset9, PCOffset11, Register, XorInstruction};
 
 use crate::{Error, Memory, Observer, IO, USER_PROGRAM_START};
 
@@ -199,8 +199,8 @@ impl<I: IO, O: Observer> Computer<I, O> {
             Instruction::Lea(dr, pcoffset9) => {
                 self.perform_lea_instruction(dr, pcoffset9);
             }
-            Instruction::Not(dr, sr) => {
-                self.perform_not_instruction(dr, sr);
+            Instruction::XorInstruction(xor_instruction) => {
+                self.perform_xor_instruction(xor_instruction);
             }
             Instruction::Ret => {
                 // RET is just JMP R7
@@ -280,11 +280,29 @@ impl<I: IO, O: Observer> Computer<I, O> {
         }
     }
 
-    pub fn perform_not_instruction(&mut self, dr: Register, sr: Register) {
-        let value = self.load_register(sr);
-        let result = !value;
-        self.store_register(dr, result);
-        self.set_condition_codes(result);
+    pub fn perform_xor_instruction(&mut self, xor_instruction: XorInstruction) {
+        match xor_instruction {
+            XorInstruction::XorReg(dr, sr1, sr2) => {
+                let value1 = self.load_register(sr1);
+                let value2 = self.load_register(sr2);
+                let result = value1 ^ value2;
+                self.store_register(dr, result);
+                self.set_condition_codes(result);
+            }
+            XorInstruction::XorImm(dr, sr1, immediate5) => {
+                let value1 = self.load_register(sr1);
+                // Sign-extend the 5-bit immediate
+                let imm5 = immediate5.value();
+                let value2 = if imm5 & 0x10 != 0 {
+                    (imm5 as u16) | 0xFFE0 // sign extend
+                } else {
+                    imm5 as u16
+                };
+                let result = value1 ^ value2;
+                self.store_register(dr, result);
+                self.set_condition_codes(result);
+            }
+        }
     }
 
     pub fn perform_br_instruction(&mut self, condition: Condition, offset: PCOffset9) {

@@ -6,13 +6,13 @@
 //! - NOT R3, R2      ; R3 <- NOT(R2) (special case of XOR with imm5=0x1F)
 
 use lc3b_assembler::parse_to_program;
-use lc3b_isa::{Instruction, Register};
+use lc3b_isa::{Immediate5, Instruction, Register, XorInstruction};
 
-// Note: XOR is not yet implemented in the assembler, so these tests are marked as ignored
-// until XOR support is added.
+// Note: XOR is not yet implemented in the assembler grammar, so these tests are marked as ignored
+// until XOR support is added to the grammar.
 
 #[test]
-#[ignore = "XOR instruction not yet implemented in assembler"]
+#[ignore = "XOR instruction not yet implemented in assembler grammar"]
 fn test_xor_register_mode() {
     // XOR R3, R1, R2 ; R3 <- R1 XOR R2
     let asm = "XOR R3, R1, R2";
@@ -23,7 +23,7 @@ fn test_xor_register_mode() {
 }
 
 #[test]
-#[ignore = "XOR instruction not yet implemented in assembler"]
+#[ignore = "XOR instruction not yet implemented in assembler grammar"]
 fn test_xor_immediate_mode() {
     // XOR R3, R1, #12 ; R3 <- R1 with bits [3], [2] complemented
     let asm = "XOR R3, R1, #12";
@@ -43,10 +43,11 @@ fn test_not_as_xor() {
     assert_eq!(instructions.len(), 1);
     assert_eq!(
         instructions[0],
-        Instruction::Not(
+        Instruction::XorInstruction(XorInstruction::XorImm(
             Register::Register3, // DR
             Register::Register2, // SR
-        )
+            Immediate5::from_signed(-1).unwrap(),
+        ))
     );
 
     // Verify encoding: 1001 011 010 1 11111

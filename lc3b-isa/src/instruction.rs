@@ -31,7 +31,6 @@ pub enum Instruction {
     Ldi(Register, Register, PCOffset6),
     Ldr(Register, Register, PCOffset6),
     Lea(Register, PCOffset9),
-    Not(Register, Register),
     Ret,
     Rti,
     Shf(Register, Register, Bit, Bit, Immediate4),
@@ -39,6 +38,7 @@ pub enum Instruction {
     Sti(Register, Register, PCOffset6),
     Stw(Register, Register, PCOffset6),
     Trap(TrapVect8),
+    XorInstruction(XorInstruction),
 }
 
 impl From<&Instruction> for u16 {
@@ -125,12 +125,20 @@ impl From<&Instruction> for u16 {
                 let offset_bits = offset.0 & 0x1FF;
                 opcode | dr_bits | offset_bits
             }
-            Instruction::Not(dr, sr) => {
+            Instruction::XorInstruction(XorInstruction::XorReg(dr, sr1, sr2)) => {
                 let opcode = 0b1001u16 << 12;
                 let dr_bits = (dr.to_index() as u16) << 9;
-                let sr_bits = (sr.to_index() as u16) << 6;
-                let ones = 0x3F; // bits [5:0] are all 1
-                opcode | dr_bits | sr_bits | ones
+                let sr1_bits = (sr1.to_index() as u16) << 6;
+                let sr2_bits = sr2.to_index() as u16;
+                opcode | dr_bits | sr1_bits | sr2_bits
+            }
+            Instruction::XorInstruction(XorInstruction::XorImm(dr, sr1, imm5)) => {
+                let opcode = 0b1001u16 << 12;
+                let dr_bits = (dr.to_index() as u16) << 9;
+                let sr1_bits = (sr1.to_index() as u16) << 6;
+                let imm_flag = 1u16 << 5;
+                let imm_bits = (imm5.0 as u16) & 0x1F;
+                opcode | dr_bits | sr1_bits | imm_flag | imm_bits
             }
             Instruction::Ret => {
                 // RET is JMP R7
@@ -278,10 +286,18 @@ impl TryFrom<u16> for Instruction {
                 Ok(Instruction::Lea(dr, offset))
             }
             0b1001 => {
-                // NOT
+                // XOR (NOT is XOR with imm5 = 0x1F)
                 let dr = Register::from_index(((word >> 9) & 0x7) as u8);
-                let sr = Register::from_index(((word >> 6) & 0x7) as u8);
-                Ok(Instruction::Not(dr, sr))
+                let sr1 = Register::from_index(((word >> 6) & 0x7) as u8);
+                let imm_flag = (word >> 5) & 0x1;
+
+                if imm_flag == 1 {
+                    let imm5 = Immediate5((word & 0x1F) as u8);
+                    Ok(Instruction::XorInstruction(XorInstruction::XorImm(dr, sr1, imm5)))
+                } else {
+                    let sr2 = Register::from_index((word & 0x7) as u8);
+                    Ok(Instruction::XorInstruction(XorInstruction::XorReg(dr, sr1, sr2)))
+                }
             }
             0b1000 => {
                 // RTI
@@ -340,6 +356,12 @@ pub enum AddInstruction {
 pub enum AndInstruction {
     AndReg(Register, Register, Register),
     AndImm(Register, Register, Immediate5),
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum XorInstruction {
+    XorReg(Register, Register, Register),
+    XorImm(Register, Register, Immediate5),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
