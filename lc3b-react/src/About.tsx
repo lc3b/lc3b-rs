@@ -1,9 +1,11 @@
-import { useState } from "react";
+export type AboutTab = "what" | "how" | "architecture" | "contributing";
 
-type AboutTab = "what" | "how" | "architecture" | "contributing";
+interface AboutProps {
+  activeTab: AboutTab;
+  onTabChange: (tab: AboutTab) => void;
+}
 
-function About() {
-  const [activeTab, setActiveTab] = useState<AboutTab>("what");
+function About({ activeTab, onTabChange }: AboutProps) {
 
   const tabs: { id: AboutTab; label: string }[] = [
     { id: "what", label: "What is this?" },
@@ -21,7 +23,7 @@ function About() {
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => onTabChange(tab.id)}
             className={`tab-button px-4 py-2 ${activeTab === tab.id ? "active" : ""}`}
           >
             {tab.label}
@@ -164,7 +166,7 @@ function HowItsBuiltTab() {
             <a href="https://webassembly.org/" target="_blank" rel="noopener noreferrer" className="text-[var(--accent-secondary)] hover:underline">
               WebAssembly
             </a>{" "}
-            (~115 KB). The codebase is organized into several crates:
+            (~134 KB WASM + ~4 KB JS gzipped). The codebase is organized into several crates:
           </p>
           <ul className="space-y-2 text-sm">
             <li className="flex items-start gap-3">
@@ -287,7 +289,7 @@ function HowItsBuiltTab() {
             <a href="https://pages.github.com/" target="_blank" rel="noopener noreferrer" className="text-[var(--accent-secondary)] hover:underline">
               GitHub Pages
             </a>
-            . Total download: ~170 KB (excluding the optional AI model).
+            . Total download: ~140 KB gzipped (excluding the optional AI model).
           </p>
         </div>
       </section>
@@ -302,7 +304,7 @@ function ArchitectureTab() {
       <section>
         <h2 className="text-xl font-semibold text-[var(--accent-secondary)] mb-3">System Overview</h2>
         <div className="bg-[var(--bg-primary)] rounded-lg p-4 font-mono text-xs overflow-x-auto">
-          <pre className="text-[var(--text-primary)] leading-relaxed whitespace-pre">{`
+          <pre className="text-[var(--text-primary)] leading-tight whitespace-pre">{`
 ╔═ Web Browser ════════════════════════════════════════════════════╗
 ║                                                                  ║░
 ║  ┏━━━━━━━━━━━━━━━━━━━━┓        ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┓     ║░
@@ -331,7 +333,7 @@ function ArchitectureTab() {
       <section>
         <h2 className="text-xl font-semibold text-[var(--accent-secondary)] mb-3">Rust Crate Structure</h2>
         <div className="bg-[var(--bg-primary)] rounded-lg p-4 font-mono text-xs overflow-x-auto">
-          <pre className="text-[var(--text-primary)] leading-relaxed whitespace-pre">{`
+          <pre className="text-[var(--text-primary)] leading-tight whitespace-pre">{`
                       ╔═ lc3b ═══════════════════════════════╗
                       ║  WASM bindings + Computer struct     ║░
                       ╚════════════════╦════════════════════╝░
@@ -369,7 +371,7 @@ function ArchitectureTab() {
       <section>
         <h2 className="text-xl font-semibold text-[var(--accent-secondary)] mb-3">Assembly Pipeline</h2>
         <div className="bg-[var(--bg-primary)] rounded-lg p-4 font-mono text-xs overflow-x-auto">
-          <pre className="text-[var(--text-primary)] leading-relaxed whitespace-pre">{`
+          <pre className="text-[var(--text-primary)] leading-tight whitespace-pre">{`
 ╔══════════════╗     ┏━━━━━━━━━━━━━━┓     ┏━━━━━━━━━━━━━━┓     ╔══════════════╗
 ║   Assembly   ║     ┃   Pass 1     ┃     ┃   Pass 2     ┃     ║   Binary     ║
 ║    Source    ║────▶┃   (Symbols)  ┃────▶┃   (Codegen)  ┃────▶║   Words      ║
@@ -388,7 +390,7 @@ function ArchitectureTab() {
       <section>
         <h2 className="text-xl font-semibold text-[var(--accent-secondary)] mb-3">C Compilation Pipeline</h2>
         <div className="bg-[var(--bg-primary)] rounded-lg p-4 font-mono text-xs overflow-x-auto">
-          <pre className="text-[var(--text-primary)] leading-relaxed whitespace-pre">{`
+          <pre className="text-[var(--text-primary)] leading-tight whitespace-pre">{`
 ╔══════════════╗     ┏━━━━━━━━━━━━━━┓     ┏━━━━━━━━━━━━━━┓     ╔══════════════╗
 ║   C Source   ║     ┃    Parse     ┃     ┃   Codegen    ┃     ║   Assembly   ║
 ║              ║────▶┃    (pest)    ┃────▶┃              ┃────▶║              ║
@@ -408,7 +410,7 @@ function ArchitectureTab() {
       <section>
         <h2 className="text-xl font-semibold text-[var(--accent-secondary)] mb-3">CPU Execution Cycle</h2>
         <div className="bg-[var(--bg-primary)] rounded-lg p-4 font-mono text-xs overflow-x-auto">
-          <pre className="text-[var(--text-primary)] leading-relaxed whitespace-pre">{`
+          <pre className="text-[var(--text-primary)] leading-tight whitespace-pre">{`
                     ╔═ FETCH ═════════════════════════════╗
                     ║   instruction = memory[PC]          ║░
                     ╚═════════════════╦═══════════════════╝░
@@ -446,7 +448,7 @@ function ArchitectureTab() {
       <section>
         <h2 className="text-xl font-semibold text-[var(--accent-secondary)] mb-3">React-WASM Integration</h2>
         <div className="bg-[var(--bg-primary)] rounded-lg p-4 font-mono text-xs overflow-x-auto">
-          <pre className="text-[var(--text-primary)] leading-relaxed whitespace-pre">{`
+          <pre className="text-[var(--text-primary)] leading-tight whitespace-pre">{`
 ╔═ React (Computer.tsx) ══════════╗         ╔═ WASM (wasm/mod.rs) ═════════╗
 ║                                 ║         ║                              ║░
 ║  computerRef = useRef()         ║         ║                              ║░
@@ -477,7 +479,7 @@ function ArchitectureTab() {
       <section>
         <h2 className="text-xl font-semibold text-[var(--accent-secondary)] mb-3">AI Agent Data Flow</h2>
         <div className="bg-[var(--bg-primary)] rounded-lg p-4 font-mono text-xs overflow-x-auto">
-          <pre className="text-[var(--text-primary)] leading-relaxed whitespace-pre">{`
+          <pre className="text-[var(--text-primary)] leading-tight whitespace-pre">{`
 ┏━━━━━━━━━━━━━━━━━┓   ┏━━━━━━━━━━━━━━━━━┓   ╔═ WebLLM ═══════════════════════╗
 ┃  User Message   ┃   ┃  Simulator      ┃   ║       (Browser GPU)            ║░
 ┃                 ┃░  ┃  State          ┃░  ╚════════════════╦═══════════════╝░

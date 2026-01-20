@@ -7,7 +7,7 @@ import ConditionCodes from "./ConditionCodes";
 import RegisterSet from "./RegisterSet";
 import MemoryViewer from "./MemoryViewer";
 import Console from "./Console";
-import About from "./About";
+import About, { AboutTab } from "./About";
 import Instructions from "./Instructions";
 import Assembly from "./Assembly";
 import { SamplePrograms } from "./SamplePrograms";
@@ -42,8 +42,8 @@ type Tab = "simulator" | "instructions" | "assembly" | "samples" | "about" | "ag
 type EditorMode = "assembly" | "c";
 type ExamplesSubtab = "assembly" | "c";
 
-// Parse the URL hash to get tab and subtab
-function parseHash(): { tab: Tab; examplesSubtab: ExamplesSubtab } {
+// Parse the URL hash to get tab and subtabs
+function parseHash(): { tab: Tab; examplesSubtab: ExamplesSubtab; aboutSubtab: AboutTab } {
   const hash = window.location.hash.slice(1); // Remove leading #
   const parts = hash.split("/");
   
@@ -60,24 +60,34 @@ function parseHash(): { tab: Tab; examplesSubtab: ExamplesSubtab } {
   if (parts[0] === "examples" && (parts[1] === "assembly" || parts[1] === "c")) {
     examplesSubtab = parts[1];
   }
+
+  const validAboutSubtabs: AboutTab[] = ["what", "how", "architecture", "contributing"];
+  let aboutSubtab: AboutTab = "what";
+  if (parts[0] === "about" && validAboutSubtabs.includes(parts[1] as AboutTab)) {
+    aboutSubtab = parts[1] as AboutTab;
+  }
   
-  return { tab, examplesSubtab };
+  return { tab, examplesSubtab, aboutSubtab };
 }
 
 // Build a hash string from tab and subtab
-function buildHash(tab: Tab, examplesSubtab?: ExamplesSubtab): string {
+function buildHash(tab: Tab, examplesSubtab?: ExamplesSubtab, aboutSubtab?: AboutTab): string {
   // Use "examples" in URL instead of "samples"
   const urlTab = tab === "samples" ? "examples" : tab;
   if (tab === "samples" && examplesSubtab) {
     return `#${urlTab}/${examplesSubtab}`;
   }
+  if (tab === "about" && aboutSubtab && aboutSubtab !== "what") {
+    return `#${urlTab}/${aboutSubtab}`;
+  }
   return `#${urlTab}`;
 }
 
 function Computer() {
-  const { tab: initialTab, examplesSubtab: initialExamplesSubtab } = parseHash();
+  const { tab: initialTab, examplesSubtab: initialExamplesSubtab, aboutSubtab: initialAboutSubtab } = parseHash();
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [examplesSubtab, setExamplesSubtab] = useState<ExamplesSubtab>(initialExamplesSubtab);
+  const [aboutSubtab, setAboutSubtab] = useState<AboutTab>(initialAboutSubtab);
   const [editorMode, setEditorMode] = useState<EditorMode>("assembly");
   const [assembly, setAssembly] = useState(DEFAULT_ASSEMBLY);
   const [cCode, setCCode] = useState(DEFAULT_C_CODE);
@@ -112,18 +122,23 @@ function Computer() {
 
   // Update URL when tab or subtab changes
   useEffect(() => {
-    const newHash = buildHash(activeTab, activeTab === "samples" ? examplesSubtab : undefined);
+    const newHash = buildHash(
+      activeTab,
+      activeTab === "samples" ? examplesSubtab : undefined,
+      activeTab === "about" ? aboutSubtab : undefined
+    );
     if (window.location.hash !== newHash) {
       window.history.pushState(null, "", newHash);
     }
-  }, [activeTab, examplesSubtab]);
+  }, [activeTab, examplesSubtab, aboutSubtab]);
 
   // Handle browser back/forward navigation
   useEffect(() => {
     const handleHashChange = () => {
-      const { tab, examplesSubtab: subtab } = parseHash();
+      const { tab, examplesSubtab: subtab, aboutSubtab: aboutSub } = parseHash();
       setActiveTab(tab);
       setExamplesSubtab(subtab);
+      setAboutSubtab(aboutSub);
     };
 
     window.addEventListener("hashchange", handleHashChange);
@@ -529,7 +544,7 @@ function Computer() {
 
       {/* About Tab */}
       <div className={`flex-1 overflow-y-auto bg-[var(--bg-primary)] ${activeTab === "about" ? "" : "hidden"}`}>
-        <About />
+        <About activeTab={aboutSubtab} onTabChange={setAboutSubtab} />
       </div>
     </div>
   );
