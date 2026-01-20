@@ -48,12 +48,15 @@ function RegisterSet({ registers, modifiedRegister }: RegisterSetProps) {
   return (
     <div className="mb-4">
       <div className="panel-title">Registers</div>
-      <div className="bg-[var(--bg-tertiary)] border-2 border-[var(--border-color)] rounded-lg p-2">
+      <div 
+        className="bg-[var(--bg-tertiary)] border-2 border-[var(--border-color)] p-2"
+        style={{ boxShadow: '3px 3px 0 var(--shadow-color)' }}
+      >
         <div className="grid grid-cols-4 gap-x-3 gap-y-1">
           {regs.map((reg) => (
             <div
               key={reg.name}
-              className={`flex items-center justify-between px-1 rounded transition-colors duration-500 ${
+              className={`flex items-center justify-between px-1 transition-colors duration-500 ${
                 animatingReg === reg.index ? "register-changed" : ""
               }`}
             >

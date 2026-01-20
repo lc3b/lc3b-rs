@@ -329,7 +329,10 @@ function Computer() {
           <div className="flex items-center justify-between mb-3">
             {/* Mode Toggle */}
             <div className="flex items-center gap-2">
-              <div className="flex rounded-md overflow-hidden border border-[var(--border-color)]">
+              <div 
+                className="flex border-2 border-[var(--border-color)]"
+                style={{ boxShadow: '2px 2px 0 var(--shadow-color)' }}
+              >
                 <button
                   onClick={() => setEditorMode("c")}
                   className={`px-3 py-1 text-sm font-medium transition-colors ${
@@ -342,7 +345,7 @@ function Computer() {
                 </button>
                 <button
                   onClick={() => setEditorMode("assembly")}
-                  className={`px-3 py-1 text-sm font-medium transition-colors ${
+                  className={`px-3 py-1 text-sm font-medium transition-colors border-l-2 border-[var(--border-color)] ${
                     editorMode === "assembly"
                       ? "bg-[var(--accent-primary)] text-[var(--bg-primary)]"
                       : "bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"

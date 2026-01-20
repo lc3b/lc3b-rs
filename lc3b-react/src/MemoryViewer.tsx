@@ -426,7 +426,7 @@ function MemoryRow({ addr, value, isPC }: MemoryRowProps) {
     <div>
       <div
         onClick={() => setExpanded(!expanded)}
-        className={`flex gap-3 px-2 py-1 rounded cursor-pointer select-none ${
+        className={`flex gap-3 px-2 py-1 cursor-pointer select-none ${
           isPC
             ? "bg-bg-highlight border-l-[3px] border-accent-primary"
             : "hover:bg-bg-secondary"
@@ -441,11 +441,14 @@ function MemoryRow({ addr, value, isPC }: MemoryRowProps) {
         </span>
       </div>
       {expanded && (
-        <div className="ml-2 mt-1 mb-2 bg-bg-primary border border-border-color rounded-md p-3 text-xs">
+        <div 
+          className="ml-2 mt-1 mb-2 bg-bg-primary border-2 border-border-color p-3 text-xs"
+          style={{ boxShadow: '2px 2px 0 var(--shadow-color)' }}
+        >
           <div className="mb-2 pb-2 border-b border-border-color">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-text-muted">Variant:</span>
-              <code className="font-mono text-accent-primary bg-bg-secondary px-1.5 py-0.5 rounded">
+              <code className="font-mono text-accent-primary bg-bg-secondary px-1.5 py-0.5">
                 {decoded.variant}
               </code>
             </div>
@@ -504,7 +507,10 @@ function MemoryViewer({ programCounter, readMemory }: MemoryViewerProps) {
   return (
     <div className="mt-8 mb-4">
       <div className="panel-title">Memory</div>
-      <div className="bg-bg-primary rounded-md p-2 font-mono text-xs max-h-[350px] overflow-y-auto">
+      <div 
+        className="bg-bg-primary border-2 border-border-color p-2 font-mono text-xs max-h-[350px] overflow-y-auto"
+        style={{ boxShadow: '3px 3px 0 var(--shadow-color)' }}
+      >
         {rows.length > 0 ? (
           rows
         ) : (
