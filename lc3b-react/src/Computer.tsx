@@ -15,12 +15,17 @@ import { ThemeToggle } from "./ThemeContext";
 import Agent from "./Agent";
 import { useAgent } from "./AgentContext";
 
-const DEFAULT_ASSEMBLY = `; LC-3b Assembly Program
+const DEFAULT_ASSEMBLY = `.ORIG x3000
+
+; LC-3b Assembly Program
 ; Example: Add registers
 
 ADD R1, R2, R0   ; R1 = R2 + R0
 ADD R3, R1, #5   ; R3 = R1 + 5
 ADD R4, R3, R1   ; R4 = R3 + R1
+
+HALT
+.END
 `;
 
 const DEFAULT_C_CODE = `#include <lc3b-io.h>

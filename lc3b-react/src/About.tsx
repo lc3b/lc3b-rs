@@ -168,27 +168,27 @@ function HowItsBuiltTab() {
           </p>
           <ul className="space-y-2 text-sm">
             <li className="flex items-start gap-3">
-              <code className="text-[var(--accent-primary)] font-mono min-w-[140px]">lc3b-isa</code>
+              <a href="https://github.com/lc3b/lc3b-rs/tree/main/lc3b-isa" target="_blank" rel="noopener noreferrer" className="text-[var(--accent-primary)] font-mono min-w-[140px]">lc3b-isa</a>
               <span className="text-[var(--text-primary)]">Instruction set types, encoding/decoding between Rust enums and 16-bit words</span>
             </li>
             <li className="flex items-start gap-3">
-              <code className="text-[var(--accent-primary)] font-mono min-w-[140px]">lc3b-assembler</code>
+              <a href="https://github.com/lc3b/lc3b-rs/tree/main/lc3b-assembler" target="_blank" rel="noopener noreferrer" className="text-[var(--accent-primary)] font-mono min-w-[140px]">lc3b-assembler</a>
               <span className="text-[var(--text-primary)]">Two-pass assembler using pest parser - handles labels, directives, and code generation</span>
             </li>
             <li className="flex items-start gap-3">
-              <code className="text-[var(--accent-primary)] font-mono min-w-[140px]">lc3b-c-grammar</code>
+              <a href="https://github.com/lc3b/lc3b-rs/tree/main/lc3b-c-grammar" target="_blank" rel="noopener noreferrer" className="text-[var(--accent-primary)] font-mono min-w-[140px]">lc3b-c-grammar</a>
               <span className="text-[var(--text-primary)]">PEG grammar for a C subset (functions, loops, conditionals, basic types)</span>
             </li>
             <li className="flex items-start gap-3">
-              <code className="text-[var(--accent-primary)] font-mono min-w-[140px]">lc3b-c-ast</code>
+              <a href="https://github.com/lc3b/lc3b-rs/tree/main/lc3b-c-ast" target="_blank" rel="noopener noreferrer" className="text-[var(--accent-primary)] font-mono min-w-[140px]">lc3b-c-ast</a>
               <span className="text-[var(--text-primary)]">Abstract syntax tree types for the C subset</span>
             </li>
             <li className="flex items-start gap-3">
-              <code className="text-[var(--accent-primary)] font-mono min-w-[140px]">lc3b-c-compiler</code>
+              <a href="https://github.com/lc3b/lc3b-rs/tree/main/lc3b-c-compiler" target="_blank" rel="noopener noreferrer" className="text-[var(--accent-primary)] font-mono min-w-[140px]">lc3b-c-compiler</a>
               <span className="text-[var(--text-primary)]">AST to LC-3b assembly code generator with register allocation</span>
             </li>
             <li className="flex items-start gap-3">
-              <code className="text-[var(--accent-primary)] font-mono min-w-[140px]">lc3b</code>
+              <a href="https://github.com/lc3b/lc3b-rs/tree/main/lc3b" target="_blank" rel="noopener noreferrer" className="text-[var(--accent-primary)] font-mono min-w-[140px]">lc3b</a>
               <span className="text-[var(--text-primary)]">Computer emulator (CPU, memory, execution) with WASM bindings</span>
             </li>
           </ul>
@@ -216,19 +216,19 @@ function HowItsBuiltTab() {
           </p>
           <ul className="space-y-2 text-sm">
             <li className="flex items-start gap-3">
-              <code className="text-[var(--accent-primary)] font-mono min-w-[140px]">Computer.tsx</code>
+              <a href="https://github.com/lc3b/lc3b-rs/blob/main/lc3b-react/src/Computer.tsx" target="_blank" rel="noopener noreferrer" className="text-[var(--accent-primary)] font-mono min-w-[140px]">Computer.tsx</a>
               <span className="text-[var(--text-primary)]">Main simulator - code editor, WASM integration, execution controls</span>
             </li>
             <li className="flex items-start gap-3">
-              <code className="text-[var(--accent-primary)] font-mono min-w-[140px]">RegisterSet.tsx</code>
+              <a href="https://github.com/lc3b/lc3b-rs/blob/main/lc3b-react/src/RegisterSet.tsx" target="_blank" rel="noopener noreferrer" className="text-[var(--accent-primary)] font-mono min-w-[140px]">RegisterSet.tsx</a>
               <span className="text-[var(--text-primary)]">R0-R7 display with change highlighting</span>
             </li>
             <li className="flex items-start gap-3">
-              <code className="text-[var(--accent-primary)] font-mono min-w-[140px]">MemoryViewer.tsx</code>
+              <a href="https://github.com/lc3b/lc3b-rs/blob/main/lc3b-react/src/MemoryViewer.tsx" target="_blank" rel="noopener noreferrer" className="text-[var(--accent-primary)] font-mono min-w-[140px]">MemoryViewer.tsx</a>
               <span className="text-[var(--text-primary)]">Memory inspection with instruction decoding</span>
             </li>
             <li className="flex items-start gap-3">
-              <code className="text-[var(--accent-primary)] font-mono min-w-[140px]">Agent.tsx</code>
+              <a href="https://github.com/lc3b/lc3b-rs/blob/main/lc3b-react/src/Agent.tsx" target="_blank" rel="noopener noreferrer" className="text-[var(--accent-primary)] font-mono min-w-[140px]">Agent.tsx</a>
               <span className="text-[var(--text-primary)]">AI assistant chat interface and status display</span>
             </li>
           </ul>
