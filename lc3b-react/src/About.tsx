@@ -412,12 +412,12 @@ function ArchitectureTab() {
                     ┌─────────────────────────────────────┐
                     │            FETCH                    │
                     │   instruction = memory[PC]          │
-                    │   PC = PC + 2                       │
                     └──────────────────┬──────────────────┘
                                        │
                                        ▼
                     ┌─────────────────────────────────────┐
                     │            DECODE                   │
+                    │   PC = PC + 1  (word increment)     │
                     │   opcode = instruction[15:12]       │
                     │   extract operands based on opcode  │
                     └──────────────────┬──────────────────┘
