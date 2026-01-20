@@ -189,7 +189,9 @@ impl<I: IO, O: Observer> Computer<I, O> {
             Instruction::Ldb(dr, base, offset) => {
                 self.perform_ldb_instruction(dr, base, offset);
             }
-            Instruction::Ldi(register, register1, pcoffset6) => todo!(),
+            Instruction::Ldi(dr, base, offset) => {
+                self.perform_ldi_instruction(dr, base, offset);
+            }
             Instruction::Ldr(register, register1, pcoffset6) => todo!(),
             Instruction::Lea(dr, pcoffset9) => {
                 self.perform_lea_instruction(dr, pcoffset9);
@@ -375,6 +377,24 @@ impl<I: IO, O: Observer> Computer<I, O> {
         } else {
             byte as u16
         };
+
+        self.store_register(dr, result);
+        self.set_condition_codes(result);
+    }
+
+    pub fn perform_ldi_instruction(&mut self, dr: Register, base: Register, offset: PCOffset6) {
+        // LDI: DR = mem[mem[BaseR + LSHF(SEXT(offset6), 1)]]
+        // First, compute the address of the pointer
+        let base_val = self.load_register(base);
+        let signed_offset = offset.sign_extend();
+        let shifted_offset = (signed_offset << 1) as u16; // LSHF by 1 for word alignment
+        let pointer_address = base_val.wrapping_add(shifted_offset);
+
+        // Read the pointer (target address) from memory
+        let target_address = self.memory.read_word(pointer_address);
+
+        // Read the value at the target address
+        let result = self.memory.read_word(target_address);
 
         self.store_register(dr, result);
         self.set_condition_codes(result);
