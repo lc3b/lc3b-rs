@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { BitExplorer } from "./BitExplorer";
 
 export interface RegisterSetProps {
   registers: {
@@ -20,6 +21,7 @@ function formatHex(value: number): string {
 
 function RegisterSet({ registers, modifiedRegister }: RegisterSetProps) {
   const [animatingReg, setAnimatingReg] = useState<number | null>(null);
+  const [selectedReg, setSelectedReg] = useState<number | null>(null);
 
   const regs = [
     { name: "R0", value: registers.r0, index: 0 },
@@ -45,6 +47,12 @@ function RegisterSet({ registers, modifiedRegister }: RegisterSetProps) {
     }
   }, [modifiedRegister, registers]);
 
+  const handleRegisterClick = (index: number) => {
+    setSelectedReg(selectedReg === index ? null : index);
+  };
+
+  const selectedRegData = selectedReg !== null ? regs[selectedReg] : null;
+
   return (
     <div className="mb-4">
       <div className="panel-title">Registers</div>
@@ -56,8 +64,13 @@ function RegisterSet({ registers, modifiedRegister }: RegisterSetProps) {
           {regs.map((reg) => (
             <div
               key={reg.name}
-              className={`flex items-center justify-between px-1 transition-colors duration-500 ${
+              onClick={() => handleRegisterClick(reg.index)}
+              className={`flex items-center justify-between px-1 cursor-pointer transition-colors duration-500 ${
                 animatingReg === reg.index ? "register-changed" : ""
+              } ${
+                selectedReg === reg.index 
+                  ? "bg-accent-primary/20 outline outline-1 outline-accent-secondary" 
+                  : "hover:bg-bg-secondary"
               }`}
             >
               <span className="text-xs text-[var(--text-muted)]">{reg.name}</span>
@@ -66,6 +79,16 @@ function RegisterSet({ registers, modifiedRegister }: RegisterSetProps) {
           ))}
         </div>
       </div>
+      {selectedRegData && (
+        <div className="mt-2">
+          <BitExplorer
+            label={selectedRegData.name}
+            word={selectedRegData.value}
+            onClose={() => setSelectedReg(null)}
+            mode="data"
+          />
+        </div>
+      )}
     </div>
   );
 }
