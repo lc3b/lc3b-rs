@@ -41,8 +41,6 @@ function decodeInstruction(word: number): { opcode: string; operands: string; de
   const trapvect8 = word & 0xff;
   const bit5 = (word >> 5) & 0x1;
   const bit11 = (word >> 11) & 0x1;
-  const bit4 = (word >> 4) & 0x1;
-  const amount4 = word & 0xf;
   const n = (word >> 11) & 0x1;
   const z = (word >> 10) & 0x1;
   const p = (word >> 9) & 0x1;
