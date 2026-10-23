@@ -1,25 +1,4 @@
 function About() {
-  const supportedInstructions = [
-    { name: "ADD", supported: true, description: "Add two values" },
-    { name: "AND", supported: true, description: "Bitwise AND" },
-    { name: "BR", supported: true, description: "Conditional branch" },
-    { name: "JMP", supported: true, description: "Unconditional jump" },
-    { name: "JSR/JSRR", supported: true, description: "Jump to subroutine" },
-    { name: "LDB", supported: false, description: "Load byte from memory" },
-    { name: "LDW", supported: false, description: "Load word from memory" },
-    { name: "LEA", supported: true, description: "Load effective address" },
-    { name: "NOT", supported: true, description: "Bitwise NOT" },
-    { name: "RET", supported: true, description: "Return from subroutine" },
-    { name: "RTI", supported: false, description: "Return from interrupt" },
-    { name: "LSHF", supported: false, description: "Left shift" },
-    { name: "RSHFL", supported: false, description: "Right shift logical" },
-    { name: "RSHFA", supported: false, description: "Right shift arithmetic" },
-    { name: "STB", supported: false, description: "Store byte to memory" },
-    { name: "STW", supported: false, description: "Store word to memory" },
-    { name: "TRAP", supported: false, description: "System call" },
-    { name: "XOR", supported: true, description: "Bitwise XOR" },
-  ];
-
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <h1 className="text-3xl font-bold text-[#e94560] mb-6">About LC-3b Simulator</h1>
@@ -35,31 +14,6 @@ function About() {
           Unlike traditional emulators, this implementation stores instructions directly in
           memory as raw 16-bit words, just like real hardware. Programs are loaded at address
           0x3000 and can be inspected in the memory viewer.
-        </p>
-      </section>
-
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold text-[#4ecca3] mb-3">Supported Instructions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          {supportedInstructions.map((inst) => (
-            <div
-              key={inst.name}
-              className="bg-[#0f0f1a] rounded-md p-2 flex items-center gap-2"
-              title={inst.description}
-            >
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  inst.supported ? "bg-[#4ecca3]" : "bg-[#555]"
-                }`}
-              />
-              <span className={inst.supported ? "text-[#ccc]" : "text-[#666]"}>
-                {inst.name}
-              </span>
-            </div>
-          ))}
-        </div>
-        <p className="text-[#888] text-sm mt-2">
-          Green = implemented, Gray = not yet implemented
         </p>
       </section>
 
@@ -105,36 +59,85 @@ function About() {
       <section className="mb-8">
         <h2 className="text-xl font-semibold text-[#4ecca3] mb-3">How It's Built</h2>
         <div className="bg-[#0f0f1a] rounded-lg p-4">
-          <ul className="space-y-3 text-[#ccc]">
+          <ul className="space-y-4 text-[#ccc]">
             <li className="flex items-start gap-3">
-              <span className="text-[#e94560] font-mono text-sm mt-0.5">CORE</span>
+              <span className="text-[#e94560] font-mono text-sm mt-0.5 min-w-[50px]">CORE</span>
               <span>
-                The emulator core is written in <strong className="text-[#4ecca3]">Rust</strong> and
-                compiled to <strong className="text-[#4ecca3]">WebAssembly</strong> for fast,
-                portable execution in the browser.
+                The emulator core is written in{" "}
+                <a
+                  href="https://www.rust-lang.org/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#4ecca3] hover:underline"
+                >
+                  Rust
+                </a>{" "}
+                and compiled to{" "}
+                <a
+                  href="https://webassembly.org/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#4ecca3] hover:underline"
+                >
+                  WebAssembly
+                </a>{" "}
+                (~115 KB). Everything runs entirely in your browser - no server-side processing required.
               </span>
             </li>
             <li className="flex items-start gap-3">
-              <span className="text-[#e94560] font-mono text-sm mt-0.5">UI</span>
+              <span className="text-[#e94560] font-mono text-sm mt-0.5 min-w-[50px]">UI</span>
               <span>
-                The frontend is built with <strong className="text-[#4ecca3]">React</strong> and{" "}
-                <strong className="text-[#4ecca3]">TypeScript</strong>, styled with{" "}
-                <strong className="text-[#4ecca3]">Tailwind CSS</strong>.
+                The frontend is built with{" "}
+                <a
+                  href="https://react.dev/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#4ecca3] hover:underline"
+                >
+                  React
+                </a>{" "}
+                and{" "}
+                <a
+                  href="https://www.typescriptlang.org/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#4ecca3] hover:underline"
+                >
+                  TypeScript
+                </a>
+                , styled with{" "}
+                <a
+                  href="https://tailwindcss.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#4ecca3] hover:underline"
+                >
+                  Tailwind CSS
+                </a>{" "}
+                (~55 KB gzipped).
               </span>
             </li>
             <li className="flex items-start gap-3">
-              <span className="text-[#e94560] font-mono text-sm mt-0.5">BUILD</span>
+              <span className="text-[#e94560] font-mono text-sm mt-0.5 min-w-[50px]">BUILD</span>
               <span>
-                A single <strong className="text-[#4ecca3]">cargo build</strong> command builds
+                A single <code className="text-[#4ecca3]">cargo build</code> command builds
                 the WASM module and React app together, embedding everything into a standalone
-                Rust binary.
+                Rust binary for local development.
               </span>
             </li>
             <li className="flex items-start gap-3">
-              <span className="text-[#e94560] font-mono text-sm mt-0.5">HOST</span>
+              <span className="text-[#e94560] font-mono text-sm mt-0.5 min-w-[50px]">HOST</span>
               <span>
-                Deployed as static files on <strong className="text-[#4ecca3]">GitHub Pages</strong>.
-                Everything runs entirely in your browser - no server required.
+                Deployed as static files on{" "}
+                <a
+                  href="https://pages.github.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#4ecca3] hover:underline"
+                >
+                  GitHub Pages
+                </a>
+                . Total download size is approximately 170 KB.
               </span>
             </li>
           </ul>

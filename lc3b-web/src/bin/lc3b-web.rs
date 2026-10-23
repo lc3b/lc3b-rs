@@ -10,6 +10,7 @@ use axum::{
 async fn main() {
     let app = Router::new()
         .route("/", get(get_index))
+        .route("/favicon.svg", get(get_favicon))
         .route("/lc3b_bg.wasm", get(get_lc3b_wasm))
         .route("/lc3b.js", get(get_lc3b_js))
         .route("/static/js/{filename}", get(get_static_js))
@@ -30,8 +31,15 @@ const REACT_MAIN_CSS: &[u8] = include_bytes!(env!("REACT_MAIN_CSS_PATH"));
 const LC3B_WASM: &[u8] = include_bytes!(env!("LC3B_PKG_WASM_PATH"));
 const LC3B_JS: &[u8] = include_bytes!(env!("LC3B_PKG_JS_PATH"));
 
+// Favicon
+const FAVICON_SVG: &[u8] = include_bytes!("../../../lc3b-react/public/favicon.svg");
+
 async fn get_index() -> impl IntoResponse {
     (StatusCode::OK, [("content-type", "text/html")], REACT_INDEX)
+}
+
+async fn get_favicon() -> impl IntoResponse {
+    (StatusCode::OK, [("content-type", "image/svg+xml")], FAVICON_SVG)
 }
 
 async fn get_lc3b_wasm() -> impl IntoResponse {

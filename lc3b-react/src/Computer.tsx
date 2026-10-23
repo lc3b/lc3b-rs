@@ -23,6 +23,7 @@ import MemoryViewer from "./MemoryViewer";
 import StatusSection from "./StatusSection";
 import DebugLog from "./DebugLog";
 import About from "./About";
+import Instructions from "./Instructions";
 
 const DEFAULT_ASSEMBLY = `; LC-3b Assembly Program
 ; Example: Add registers
@@ -32,7 +33,7 @@ ADD R3, R1, #5   ; R3 = R1 + 5
 ADD R4, R3, R1   ; R4 = R3 + R1
 `;
 
-type Tab = "simulator" | "about";
+type Tab = "simulator" | "instructions" | "about";
 
 function Computer() {
   const [activeTab, setActiveTab] = useState<Tab>("simulator");
@@ -119,6 +120,16 @@ function Computer() {
               Simulator
             </button>
             <button
+              onClick={() => setActiveTab("instructions")}
+              className={`px-4 py-2 rounded-t-md font-medium transition-colors ${
+                activeTab === "instructions"
+                  ? "bg-[#1a1a2e] text-[#4ecca3]"
+                  : "text-[#888] hover:text-[#ccc]"
+              }`}
+            >
+              Instructions
+            </button>
+            <button
               onClick={() => setActiveTab("about")}
               className={`px-4 py-2 rounded-t-md font-medium transition-colors ${
                 activeTab === "about"
@@ -165,8 +176,8 @@ function Computer() {
             </div>
           </div>
 
-          {/* Computer Panel */}
-          <div className="w-80 bg-[#16213e] border-l-2 border-[#0f3460] p-6 overflow-y-auto">
+          {/* Computer Panel - 25% wider (320px -> 400px) */}
+          <div className="w-[400px] bg-[#16213e] border-l-2 border-[#0f3460] p-6 overflow-y-auto">
             <ProgramCounter programCounter={pc} />
             <RegisterSet registers={registers} />
             <StatusSection isLoaded={programLoaded} instructionCount={instructionCount} />
@@ -175,6 +186,10 @@ function Computer() {
             )}
             <DebugLog />
           </div>
+        </div>
+      ) : activeTab === "instructions" ? (
+        <div className="flex-1 overflow-y-auto">
+          <Instructions />
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto">
